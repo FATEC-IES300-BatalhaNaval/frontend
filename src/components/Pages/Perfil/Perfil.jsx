@@ -12,10 +12,6 @@ export default function Perfil() {
   if (!me) return <div>Usuário não autenticado.</div>;
 
   const username = me.username || "#user";
-
-  const icon = me?.currentCosmetic?.currentIcon || null;
-  const background = me?.currentCosmetic?.currentBackground || null;
-
   const iconSrc = resolveCosmeticUrl(
     config?.enabled_icon?.link,
     "/profileicon.png"
@@ -38,7 +34,7 @@ export default function Perfil() {
     <div
       className={styles.Container}
       style={{
-        "background-image": backgroundSrc ? `url(${backgroundSrc})` : "",
+        backgroundImage: backgroundSrc ? `url(${backgroundSrc})` : "",
       }}
     >
       <div className={styles.Header}>
