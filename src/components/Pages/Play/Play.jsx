@@ -1,19 +1,15 @@
 import { useRef, useState, useEffect, useCallback } from "react";
 import { useParams } from "react-router-dom";
-import styles from "./Play.module.css";
-
-import Board from "../../Board/Board";
-import Ships from "../../Ships/Ships";
-import EmojiBox from "../../EmojiBox/EmojiBox";
-import EmojiAnimation from "../../EmojiBox/EmojiAnimation";
-import Placar from "../../Placar/Placar";
-import Deck from "../../Deck/Deck";
-import TurnIndicator from "../../TurnIndicator/TurnIndicator";
-import Timer from "../../Timer/Timer";
-import PopupComponent from "../Perfil/elements/PopupComponent";
 
 import { useAuth } from "../../../hooks/useAuth";
 import { useMatch } from "../../../hooks/useMatch";
+
+// Fases
+import LobbyPhase from "./phases/LobbyPhase";
+import PlacementPhase from "./phases/PlacementPhase";
+import WaitingPlacementPhase from "./phases/WaitingPlacementPhase";
+import BattlePhase from "./phases/BattlePhase";
+import FinishedPhase from "./phases/FinishedPhase";
 
 export default function Play() {
   const { match_id } = useParams();
@@ -86,30 +82,25 @@ export default function Play() {
     load();
   }, [getMatch, getShipDefinitions, match_id]);
 
-  // Polling a cada 3 segundos -------------------------------------------
+  // Polling -------------------------------------------------------------
   useEffect(() => {
     const interval = setInterval(async () => {
       try {
         const updated = await getMatch(match_id);
 
         setMatch(prev => {
-          const newState = updated?.state;
-
-          // Evita re-render contínuo desnecessário
-          if (prev && prev.state === newState) {
+          if (prev && prev.state === updated?.state) {
             return updated;
           }
           return updated;
         });
 
-        // Atualiza frota do jogador apenas se já enviou
         if (updated && updated.player) {
           const me = updated.player.find(p => p.user_id === meId);
           if (me && me.player_ship?.length > 0) {
             shipsRef.current?.setFleetFromBackend(me.player_ship);
           }
         }
-
       } catch (err) {
         console.error("Erro no polling da partida:", err);
       }
@@ -118,18 +109,17 @@ export default function Play() {
     return () => clearInterval(interval);
   }, [match_id, getMatch, meId]);
 
-  // Update user deck ----------------------------------------------------
+  // Deck update ---------------------------------------------------------
   const handleDeckSave = useCallback(() => {
     setUserAtt?.(p => !p);
   }, [setUserAtt]);
 
-  // Send fleet ----------------------------------------------------------
+  // Fleet placement -----------------------------------------------------
   async function handleConfirmPlacement() {
     if (playerHasPlaced()) return;
 
     try {
       setSubmitting(true);
-
       const fleet = shipsRef.current.getFleetForBackend();
       await placeFleet(match_id, fleet);
 
@@ -163,13 +153,14 @@ export default function Play() {
   // Turns ---------------------------------------------------------------
   useEffect(() => {
     if (match?.state !== "ACTIVE") return;
+
     if (currentPlayer === "enemy") {
       const t = setTimeout(() => setCurrentPlayer("player"), 2000);
       return () => clearTimeout(t);
     }
   }, [match, currentPlayer]);
 
-  // Enemy click ---------------------------------------------------------
+  // Enemy cell click ----------------------------------------------------
   const handleCellClick = (x, y) => {
     if (match?.state !== "ACTIVE") return;
     if (currentPlayer !== "player") return;
@@ -196,159 +187,63 @@ export default function Play() {
     return <div style={{ padding: 20 }}>Erro ao carregar partida.</div>;
   }
 
-  // LOBBY ---------------------------------------------------------------
+  // ------------------ PHASES ------------------
+
   if (match.state === "LOBBY") {
-    const players = match.player || [];
-    const full = players.length === match.max_players;
-
     return (
-      <div className={styles.lobby}>
-        <h2>Sala: {match.room_name}</h2>
-
-        <div className={styles.playerList}>
-          {players.map(p => (
-            <div key={p.user_id}>{p.user?.username}</div>
-          ))}
-        </div>
-
-        {match.creator?.user_id === meId && (
-          <button
-            disabled={!full || submitting}
-            onClick={handleStartMatch}
-          >
-            {submitting ? "Iniciando..." : "Iniciar"}
-          </button>
-        )}
-      </div>
+      <LobbyPhase
+        match={match}
+        meId={meId}
+        submitting={submitting}
+        handleStartMatch={handleStartMatch}
+      />
     );
   }
 
-  // SHIP PLACEMENT ------------------------------------------------------
   if (match.state === "SHIP_PLACEMENT") {
-
     if (!playerHasPlaced()) {
       return (
-        <div className={styles.playContainer}>
-          <h2>Posicione seus navios</h2>
-
-          <Board ref={boardRef}>
-            <Ships
-              ref={shipsRef}
-              boardRef={boardRef}
-              shipDefinitions={shipDefs}
-              isLocked={false}
-            />
-          </Board>
-
-          <div className={styles.buttonContainer}>
-            <button onClick={() => shipsRef.current?.randomize()}>
-              Reposicionar Navios
-            </button>
-
-            <button
-              onClick={handleConfirmPlacement}
-              disabled={submitting}
-            >
-              {submitting ? "Enviando..." : "Confirmar Posicionamento"}
-            </button>
-          </div>
-
-          <div
-            className={styles.deckContainer}
-            onClick={() => setIsDeckPopupOpen(true)}
-          >
-            <Deck />
-          </div>
-
-          <PopupComponent
-            isOpen={isDeckPopupOpen}
-            onClose={() => setIsDeckPopupOpen(false)}
-            type="cards"
-            userData={user?.data || user}
-            onSave={handleDeckSave}
-          />
-        </div>
+        <PlacementPhase
+          shipDefs={shipDefs}
+          boardRef={boardRef}
+          shipsRef={shipsRef}
+          submitting={submitting}
+          handleConfirmPlacement={handleConfirmPlacement}
+          handleDeckSave={handleDeckSave}
+          isDeckPopupOpen={isDeckPopupOpen}
+          setIsDeckPopupOpen={setIsDeckPopupOpen}
+          user={user}
+        />
       );
     }
 
     if (!enemyHasPlaced()) {
-      return (
-        <div className={styles.waiting}>
-          <h2>Aguardando o oponente posicionar os navios...</h2>
-        </div>
-      );
+      return <WaitingPlacementPhase />;
     }
   }
 
-  // ACTIVE BATTLE -------------------------------------------------------
   if (match.state === "ACTIVE") {
     return (
-      <div className={styles.playContainer}>
-
-        <Placar titulo="Seu Placar" ships={mePlayer()?.player_ship || []} />
-
-        <div className={styles.mainGameArea}>
-          <div className={styles.gameStatusContainer}>
-            <TurnIndicator currentPlayer={currentPlayer} />
-            <Timer
-              duration={30}
-              onTimeEnd={() => setCurrentPlayer("enemy")}
-              isRunning={currentPlayer === "player"}
-              key={currentPlayer}
-            />
-          </div>
-
-          <div className={styles.boardsContainer}>
-
-            <div className={styles.boardWrapper}>
-              <Board ref={boardRef}>
-                <Ships
-                  ref={shipsRef}
-                  boardRef={boardRef}
-                  shipDefinitions={shipDefs}
-                  isLocked={true}
-                />
-              </Board>
-            </div>
-
-            <div className={styles.boardWrapper}>
-              <Board
-                ref={enemyBoardRef}
-                onCellClick={handleCellClick}
-                shots={shots}
-              >
-                <Ships
-                  ref={enemyShipsRef}
-                  boardRef={enemyBoardRef}
-                  shipDefinitions={shipDefs}
-                  isLocked={true}
-                  areShipsHidden={true}
-                />
-              </Board>
-            </div>
-
-          </div>
-
-          <EmojiAnimation
-            emoji={activeEmoji}
-            onAnimationEnd={() => setActiveEmoji(null)}
-          />
-          <EmojiBox onEmojiSelect={setActiveEmoji} />
-          <Deck />
-        </div>
-
-        <Placar titulo="Placar Inimigo" ships={enemyPlayer()?.player_ship || []} />
-      </div>
+      <BattlePhase
+        mePlayer={mePlayer}
+        enemyPlayer={enemyPlayer}
+        shipDefs={shipDefs}
+        boardRef={boardRef}
+        shipsRef={shipsRef}
+        enemyBoardRef={enemyBoardRef}
+        enemyShipsRef={enemyShipsRef}
+        shots={shots}
+        currentPlayer={currentPlayer}
+        setCurrentPlayer={setCurrentPlayer}
+        activeEmoji={activeEmoji}
+        setActiveEmoji={setActiveEmoji}
+        handleCellClick={handleCellClick}
+      />
     );
   }
 
-  // FINISHED ------------------------------------------------------------
   if (match.state === "FINISHED") {
-    return (
-      <div className={styles.finished}>
-        <h2>Partida encerrada</h2>
-      </div>
-    );
+    return <FinishedPhase />;
   }
 
   return <div>Estado desconhecido.</div>;
