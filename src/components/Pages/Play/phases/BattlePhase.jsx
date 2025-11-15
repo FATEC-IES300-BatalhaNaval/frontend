@@ -18,28 +18,42 @@ export default function BattlePhase({
   enemyShipsRef,
   handleCellClick,
   shots,
-  currentPlayer,
-  setCurrentPlayer,
+  isMyTurn,
   activeEmoji,
-  setActiveEmoji
+  setActiveEmoji,
 }) {
+  const itIsMyTurn = isMyTurn();
+
   return (
     <div className={styles.playContainer}>
 
+      {/* Placar do jogador */}
       <Placar titulo="Seu Placar" ships={mePlayer()?.player_ship || []} />
 
       <div className={styles.mainGameArea}>
         <div className={styles.gameStatusContainer}>
-          <TurnIndicator currentPlayer={currentPlayer} />
+          
+          {/* Indicador de turno */}
+          <TurnIndicator currentPlayer={itIsMyTurn ? "player" : "enemy"} />
+
+          {/* Timer só conta quando é minha vez */}
           <Timer
             duration={30}
-            onTimeEnd={() => setCurrentPlayer("enemy")}
-            isRunning={currentPlayer === "player"}
-            key={currentPlayer}
+            isRunning={itIsMyTurn}
+            key={itIsMyTurn ? "player" : "enemy"}
           />
+
+          {/* Mensagem quando for turno do oponente */}
+          {!itIsMyTurn && (
+            <span style={{ color: "orange", fontSize: "1.1rem", fontWeight: "bold" }}>
+              Aguarde sua vez...
+            </span>
+          )}
         </div>
 
         <div className={styles.boardsContainer}>
+
+          {/* Meu tabuleiro */}
           <div className={styles.boardWrapper}>
             <Board ref={boardRef}>
               <Ships
@@ -51,21 +65,31 @@ export default function BattlePhase({
             </Board>
           </div>
 
+          {/* Tabuleiro inimigo */}
           <div className={styles.boardWrapper}>
-            <Board
-              ref={enemyBoardRef}
-              onCellClick={handleCellClick}
-              shots={shots}
+            <div
+              style={{
+                pointerEvents: itIsMyTurn ? "auto" : "none",
+                opacity: itIsMyTurn ? 1 : 0.45,
+                transition: "opacity .3s ease"
+              }}
             >
-              <Ships
-                ref={enemyShipsRef}
-                boardRef={enemyBoardRef}
-                shipDefinitions={shipDefs}
-                isLocked={true}
-                areShipsHidden={true}
-              />
-            </Board>
+              <Board
+                ref={enemyBoardRef}
+                onCellClick={handleCellClick}
+                shots={shots}
+              >
+                <Ships
+                  ref={enemyShipsRef}
+                  boardRef={enemyBoardRef}
+                  shipDefinitions={shipDefs}
+                  isLocked={true}
+                  areShipsHidden={true}
+                />
+              </Board>
+            </div>
           </div>
+
         </div>
 
         <EmojiAnimation
@@ -73,9 +97,11 @@ export default function BattlePhase({
           onAnimationEnd={() => setActiveEmoji(null)}
         />
         <EmojiBox onEmojiSelect={setActiveEmoji} />
+
         <Deck />
       </div>
 
+      {/* Placar do inimigo */}
       <Placar titulo="Placar Inimigo" ships={enemyPlayer()?.player_ship || []} />
     </div>
   );
