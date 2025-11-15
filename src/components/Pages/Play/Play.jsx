@@ -53,15 +53,13 @@ export default function Play() {
     return match?.player?.find(p => p.user_id !== meId);
   }
 
-  function playerHasPlaced() {
-    return (mePlayer()?.player_ship?.length || 0) > 0;
-  }
+  const playerHasPlaced = () =>
+    (mePlayer()?.player_ship?.length || 0) > 0;
 
-  function enemyHasPlaced() {
-    return (enemyPlayer()?.player_ship?.length || 0) > 0;
-  }
+  const enemyHasPlaced = () =>
+    (enemyPlayer()?.player_ship?.length || 0) > 0;
 
-  // Load match + definitions --------------------------------------------
+  // Initial load --------------------------------------------------------
   useEffect(() => {
     async function load() {
       try {
@@ -75,8 +73,7 @@ export default function Play() {
         setShipDefs(Array.isArray(defs) ? defs : []);
         setMatch(matchData);
 
-        // If player already placed fleet, restore on board
-        if (matchData && mePlayer()?.player_ship?.length > 0) {
+        if (matchData && playerHasPlaced()) {
           shipsRef.current?.setFleetFromBackend(mePlayer().player_ship);
         }
 
@@ -89,16 +86,46 @@ export default function Play() {
     load();
   }, [getMatch, getShipDefinitions, match_id]);
 
+  // Polling a cada 3 segundos -------------------------------------------
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      try {
+        const updated = await getMatch(match_id);
+
+        setMatch(prev => {
+          const newState = updated?.state;
+
+          // Evita re-render contínuo desnecessário
+          if (prev && prev.state === newState) {
+            return updated;
+          }
+          return updated;
+        });
+
+        // Atualiza frota do jogador apenas se já enviou
+        if (updated && updated.player) {
+          const me = updated.player.find(p => p.user_id === meId);
+          if (me && me.player_ship?.length > 0) {
+            shipsRef.current?.setFleetFromBackend(me.player_ship);
+          }
+        }
+
+      } catch (err) {
+        console.error("Erro no polling da partida:", err);
+      }
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, [match_id, getMatch, meId]);
+
   // Update user deck ----------------------------------------------------
   const handleDeckSave = useCallback(() => {
     setUserAtt?.(p => !p);
   }, [setUserAtt]);
 
-  // Send placement ------------------------------------------------------
+  // Send fleet ----------------------------------------------------------
   async function handleConfirmPlacement() {
-    if (playerHasPlaced()) {
-      return;
-    }
+    if (playerHasPlaced()) return;
 
     try {
       setSubmitting(true);
@@ -142,7 +169,7 @@ export default function Play() {
     }
   }, [match, currentPlayer]);
 
-  // Click enemy cell ----------------------------------------------------
+  // Enemy click ---------------------------------------------------------
   const handleCellClick = (x, y) => {
     if (match?.state !== "ACTIVE") return;
     if (currentPlayer !== "player") return;
@@ -159,7 +186,8 @@ export default function Play() {
     setCurrentPlayer("enemy");
   };
 
-  // UI: lobby -----------------------------------------------------------
+  // UI ------------------------------------------------------------------
+
   if (loading) {
     return <div style={{ padding: 20 }}>Carregando partida...</div>;
   }
@@ -168,6 +196,7 @@ export default function Play() {
     return <div style={{ padding: 20 }}>Erro ao carregar partida.</div>;
   }
 
+  // LOBBY ---------------------------------------------------------------
   if (match.state === "LOBBY") {
     const players = match.player || [];
     const full = players.length === match.max_players;
@@ -194,7 +223,7 @@ export default function Play() {
     );
   }
 
-  // UI: placement --------------------------------------------------------
+  // SHIP PLACEMENT ------------------------------------------------------
   if (match.state === "SHIP_PLACEMENT") {
 
     if (!playerHasPlaced()) {
@@ -251,9 +280,8 @@ export default function Play() {
     }
   }
 
-  // UI: active battle ----------------------------------------------------
+  // ACTIVE BATTLE -------------------------------------------------------
   if (match.state === "ACTIVE") {
-
     return (
       <div className={styles.playContainer}>
 
@@ -314,7 +342,7 @@ export default function Play() {
     );
   }
 
-  // UI: finished ---------------------------------------------------------
+  // FINISHED ------------------------------------------------------------
   if (match.state === "FINISHED") {
     return (
       <div className={styles.finished}>
