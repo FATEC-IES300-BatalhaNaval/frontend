@@ -2,6 +2,9 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useAuth } from "../../../hooks/useAuth";
 import { useMatch } from "../../../hooks/useMatch";
 
+import introMusic from "../../../sound/OST/Intro.mp3";
+import battleMusic from "../../../sound/OST/Battle.mp3";
+
 export default function usePlayLogic(match_id) {
   const { user, setUserAtt } = useAuth();
 
@@ -20,6 +23,10 @@ export default function usePlayLogic(match_id) {
   const shipsRef = useRef(null);
   const enemyBoardRef = useRef(null);
   const enemyShipsRef = useRef(null);
+
+  // Audio refs
+  const introRef = useRef(null);
+  const battleRef = useRef(null);
 
   // -------------------------------------------------------------------
   // States
@@ -47,6 +54,54 @@ export default function usePlayLogic(match_id) {
 
   const enemyHasPlaced = () =>
     (enemyPlayer()?.player_ship?.length || 0) > 0;
+
+  // -------------------------------------------------------------------
+  // Audio setup (once)
+  // -------------------------------------------------------------------
+  useEffect(() => {
+    introRef.current = new Audio(introMusic);
+    battleRef.current = new Audio(battleMusic);
+
+    introRef.current.loop = true;
+    battleRef.current.loop = true;
+
+    return () => {
+      introRef.current?.pause();
+      battleRef.current?.pause();
+    };
+  }, []);
+
+  // -------------------------------------------------------------------
+  // Audio switching based on match.state
+  // -------------------------------------------------------------------
+  useEffect(() => {
+    if (!match) return;
+
+    const state = match.state;
+
+    // Lobby + Placement → Intro Music
+    if (state === "LOBBY" || state === "SHIP_PLACEMENT") {
+      battleRef.current.pause();
+      battleRef.current.currentTime = 0;
+
+      introRef.current.play().catch(() => {});
+    }
+
+    // Active battle → Battle Music
+    if (state === "ACTIVE") {
+      introRef.current.pause();
+      introRef.current.currentTime = 0;
+
+      battleRef.current.play().catch(() => {});
+    }
+
+    // Finished → stop all
+    if (state === "FINISHED") {
+      introRef.current.pause();
+      battleRef.current.pause();
+    }
+
+  }, [match?.state]);
 
   // -------------------------------------------------------------------
   // Load initial match + ship definitions
@@ -150,7 +205,7 @@ export default function usePlayLogic(match_id) {
   }
 
   // -------------------------------------------------------------------
-  // Turn system (client side only for now)
+  // Turn system
   // -------------------------------------------------------------------
   useEffect(() => {
     if (match?.state !== "ACTIVE") return;
@@ -162,7 +217,7 @@ export default function usePlayLogic(match_id) {
   }, [match, currentPlayer]);
 
   // -------------------------------------------------------------------
-  // Shooting logic (uses backend shoot endpoint)
+  // Shooting logic
   // -------------------------------------------------------------------
   const handleCellClick = async (x, y) => {
     if (match?.state !== "ACTIVE") return;
@@ -229,7 +284,6 @@ export default function usePlayLogic(match_id) {
     setActiveEmoji,
     isDeckPopupOpen,
     setIsDeckPopupOpen,
-
     shots,
 
     // actions
