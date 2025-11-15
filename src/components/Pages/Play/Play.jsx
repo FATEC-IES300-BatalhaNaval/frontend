@@ -39,6 +39,7 @@ export default function Play() {
     setActiveEmoji,
     isDeckPopupOpen,
     setIsDeckPopupOpen,
+    isMyTurn,
 
     // ações
     handleStartMatch,
@@ -104,6 +105,7 @@ export default function Play() {
         activeEmoji={activeEmoji}
         setActiveEmoji={setActiveEmoji}
         handleCellClick={handleCellClick}
+        isMyTurn={isMyTurn}
       />
     );
   }

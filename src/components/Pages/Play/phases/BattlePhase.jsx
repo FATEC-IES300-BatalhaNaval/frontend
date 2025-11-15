@@ -6,6 +6,7 @@ import EmojiAnimation from "../../../EmojiBox/EmojiAnimation";
 import TurnIndicator from "../../../TurnIndicator/TurnIndicator";
 import Timer from "../../../Timer/Timer";
 import Deck from "../../../Deck/Deck";
+import CoordinateInput from "../CoordinateInput";
 import styles from "../Play.module.css";
 
 export default function BattlePhase({
@@ -17,31 +18,34 @@ export default function BattlePhase({
   enemyBoardRef,
   enemyShipsRef,
   handleCellClick,
-  shots,
-  currentPlayer,
-  setCurrentPlayer,
+  isMyTurn,
   activeEmoji,
-  setActiveEmoji
+  setActiveEmoji,
 }) {
+  const itIsMyTurn = isMyTurn();
+
   return (
     <div className={styles.playContainer}>
-
       <Placar titulo="Seu Placar" ships={mePlayer()?.player_ship || []} />
 
       <div className={styles.mainGameArea}>
         <div className={styles.gameStatusContainer}>
-          <TurnIndicator currentPlayer={currentPlayer} />
+          <TurnIndicator currentPlayer={itIsMyTurn ? "player" : "enemy"} />
           <Timer
             duration={30}
-            onTimeEnd={() => setCurrentPlayer("enemy")}
-            isRunning={currentPlayer === "player"}
-            key={currentPlayer}
+            isRunning={itIsMyTurn}
+            key={itIsMyTurn ? "player" : "enemy"}
           />
+          {!itIsMyTurn && (
+            <span style={{ color: "orange", fontSize: "1.1rem", fontWeight: "bold" }}>
+              Aguarde sua vez...
+            </span>
+          )}
         </div>
 
         <div className={styles.boardsContainer}>
           <div className={styles.boardWrapper}>
-            <Board ref={boardRef}>
+            <Board ref={boardRef} grid={mePlayer()?.grid_cell || []}>
               <Ships
                 ref={shipsRef}
                 boardRef={boardRef}
@@ -52,21 +56,35 @@ export default function BattlePhase({
           </div>
 
           <div className={styles.boardWrapper}>
-            <Board
-              ref={enemyBoardRef}
-              onCellClick={handleCellClick}
-              shots={shots}
+            <div
+              style={{
+                pointerEvents: itIsMyTurn ? "auto" : "none",
+                opacity: itIsMyTurn ? 1 : 0.45,
+                transition: "opacity .3s ease"
+              }}
             >
-              <Ships
-                ref={enemyShipsRef}
-                boardRef={enemyBoardRef}
-                shipDefinitions={shipDefs}
-                isLocked={true}
-                areShipsHidden={true}
-              />
-            </Board>
+              <Board
+                ref={enemyBoardRef}
+                onCellClick={handleCellClick}
+                grid={enemyPlayer()?.grid_cell || []}
+              >
+                <Ships
+                  ref={enemyShipsRef}
+                  boardRef={enemyBoardRef}
+                  shipDefinitions={shipDefs}
+                  isLocked={true}
+                  areShipsHidden={true}
+                />
+              </Board>
+            </div>
           </div>
         </div>
+
+        {/* Input extra para atirar via coordenada */}
+        <CoordinateInput
+          onShoot={handleCellClick}
+          disabled={!itIsMyTurn}
+        />
 
         <EmojiAnimation
           emoji={activeEmoji}
