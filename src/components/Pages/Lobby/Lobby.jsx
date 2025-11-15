@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useMatch } from "../../../hooks/useMatch";
+import { useAuth } from "../../../hooks/useAuth";
 import styles from "./Lobby.module.css";
 
 export default function Lobby() {
   const navigate = useNavigate();
   const { matches, loading, searchMatches, newMatch, joinMatch } = useMatch();
+  const { user } = useAuth();
 
   const [filter, setFilter] = useState("all");
   const [searchTerm, setSearchTerm] = useState("");
@@ -19,12 +21,23 @@ export default function Lobby() {
   const [joinRoomSelected, setJoinRoomSelected] = useState(null);
   const [showJoinModal, setShowJoinModal] = useState(false);
 
+  const meId = user?.data?.user_id || user?.user_id;
+
   // -------------------------------------------------------------------
   // Carrega salas ao abrir
   // -------------------------------------------------------------------
   useEffect(() => {
     searchMatches();
   }, [searchMatches]);
+
+  // -------------------------------------------------------------------
+  // Suas partidas
+  // -------------------------------------------------------------------
+  const myMatches = useMemo(() => {
+    return matches.filter((m) =>
+      m.player?.some((p) => p.user_id === meId)
+    );
+  }, [matches, meId]);
 
   // -------------------------------------------------------------------
   // Filtro e busca
@@ -60,7 +73,6 @@ export default function Lobby() {
     const res = await newMatch(body);
 
     if (res?.match_id) {
-      // Criou → Já entra (join) → Vai para Play
       await joinMatch(res.match_id);
       navigate(`/play/${res.match_id}`);
     }
@@ -70,7 +82,6 @@ export default function Lobby() {
   // Entrar em sala
   // -------------------------------------------------------------------
   function joinRoom(room) {
-    // Sala privada → pedir senha
     if (room.is_private) {
       setJoinRoomSelected(room);
       setJoinPassword("");
@@ -78,7 +89,6 @@ export default function Lobby() {
       return;
     }
 
-    // Sala pública → entra direto
     enterMatch(room.match_id);
   }
 
@@ -112,6 +122,29 @@ export default function Lobby() {
   return (
     <div className={styles.lobbyBackground}>
       <div className={styles.lobbyContainer}>
+
+        {/* Suas partidas */}
+        {myMatches.length > 0 && (
+          <div className={styles.myMatchesSection}>
+            <h2>Suas partidas</h2>
+
+            {myMatches.map((m) => (
+              <div key={m.match_id} className={styles.myMatchCard}>
+                <div>
+                  <strong>{m.room_name}</strong>
+                  <div>Estado: {m.state}</div>
+                </div>
+
+                <button
+                  className={styles.joinButton}
+                  onClick={() => navigate(`/play/${m.match_id}`)}
+                >
+                  Entrar
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
 
         {/* Header */}
         <div className={styles.header}>
