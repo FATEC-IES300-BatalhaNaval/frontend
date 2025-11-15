@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useAuth } from "../../../hooks/useAuth";
 import { useMatch } from "../../../hooks/useMatch";
 
@@ -22,8 +22,6 @@ export default function usePlayLogic(match_id) {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
 
-  const [shots, setShots] = useState([]); // recebe hits e misses do jogador
-
   const [activeEmoji, setActiveEmoji] = useState(null);
   const [isDeckPopupOpen, setIsDeckPopupOpen] = useState(false);
 
@@ -33,10 +31,17 @@ export default function usePlayLogic(match_id) {
 
   const playerHasPlaced = () => (mePlayer()?.player_ship?.length || 0) > 0;
   const enemyHasPlaced = () => (enemyPlayer()?.player_ship?.length || 0) > 0;
-
   const isMyTurn = () => match?.current_user_id === meId;
 
-  // Inicializa sons
+  const shots = useMemo(() => {
+    const enemyGrid = enemyPlayer()?.grid_cell || [];
+    return enemyGrid.map(c => ({
+      x: c.x,
+      y: c.y,
+      isHit: c.is_hit && c.ship_id
+    }));
+  }, [enemyPlayer]);
+
   useEffect(() => {
     introRef.current = new Audio(introMusic);
     battleRef.current = new Audio(battleMusic);
@@ -50,35 +55,29 @@ export default function usePlayLogic(match_id) {
     };
   }, []);
 
-  // Troca música por estado da partida
   useEffect(() => {
     if (!match) return;
-    const state = match.state;
 
-    if (state === "LOBBY" || state === "SHIP_PLACEMENT") {
+    if (match.state === "LOBBY" || match.state === "SHIP_PLACEMENT") {
       battleRef.current.pause();
-      battleRef.current.currentTime = 0;
       introRef.current.play().catch(() => {});
     }
 
-    if (state === "ACTIVE") {
+    if (match.state === "ACTIVE") {
       introRef.current.pause();
-      introRef.current.currentTime = 0;
       battleRef.current.play().catch(() => {});
     }
 
-    if (state === "FINISHED") {
+    if (match.state === "FINISHED") {
       introRef.current.pause();
       battleRef.current.pause();
     }
   }, [match?.state]);
 
-  // Carrega partida + navios inicialmente
   useEffect(() => {
     async function load() {
       try {
         setLoading(true);
-
         const [defs, matchData] = await Promise.all([
           getShipDefinitions(),
           getMatch(match_id),
@@ -87,19 +86,9 @@ export default function usePlayLogic(match_id) {
         setShipDefs(Array.isArray(defs) ? defs : []);
         setMatch(matchData);
 
-        if (matchData && playerHasPlaced()) {
-          shipsRef.current?.setFleetFromBackend(mePlayer().player_ship);
-        }
-
-        if (matchData) {
-          const me = matchData.player?.find(p => p.user_id === meId);
-          if (me?.grid_cell) {
-            setShots(
-              me.grid_cell.map(c => ({
-                x: c.x, y: c.y, isHit: !!c.ship_id
-              }))
-            );
-          }
+        const me = matchData?.player?.find(p => p.user_id === meId);
+        if (me?.player_ship?.length > 0) {
+          shipsRef.current?.setFleetFromBackend(me.player_ship);
         }
 
       } catch (err) {
@@ -108,37 +97,33 @@ export default function usePlayLogic(match_id) {
         setLoading(false);
       }
     }
+
     load();
   }, [getMatch, getShipDefinitions, match_id]);
 
-  // Polling contínuo
+  // Polling otimizado
   useEffect(() => {
     const interval = setInterval(async () => {
       try {
         const updated = await getMatch(match_id);
-        setMatch(updated);
 
-        const me = updated?.player?.find(p => p.user_id === meId);
-        if (me) {
-          if (me.player_ship?.length > 0) {
+        // Só atualiza se mudou
+        if (JSON.stringify(updated) !== JSON.stringify(match)) {
+          setMatch(updated);
+
+          const me = updated?.player?.find(p => p.user_id === meId);
+          if (me?.player_ship?.length > 0) {
             shipsRef.current?.setFleetFromBackend(me.player_ship);
-          }
-          if (me.grid_cell) {
-            setShots(
-              me.grid_cell.map(c => ({
-                x: c.x, y: c.y, isHit: !!c.ship_id
-              }))
-            );
           }
         }
 
       } catch (err) {
-        console.error("Erro no polling:", err);
+        console.error("Polling erro:", err);
       }
     }, 2000);
 
     return () => clearInterval(interval);
-  }, [match_id, getMatch, meId]);
+  }, [match, match_id, getMatch, meId]);
 
   const handleDeckSave = useCallback(() => {
     setUserAtt?.(p => !p);
@@ -146,6 +131,7 @@ export default function usePlayLogic(match_id) {
 
   async function handleConfirmPlacement() {
     if (playerHasPlaced()) return;
+
     try {
       setSubmitting(true);
       const fleet = shipsRef.current.getFleetForBackend();
@@ -168,20 +154,21 @@ export default function usePlayLogic(match_id) {
     }
   }
 
-  async function handleCellClick(x, y) {
+  // Atualização imediata após tiro
+  const handleCellClick = async (x, y) => {
+    if (!match?.state || match.state !== "ACTIVE") return;
     if (!isMyTurn()) return;
-    if (match?.state !== "ACTIVE") return;
 
     try {
       setSubmitting(true);
       const updated = await shoot(match_id, x, y);
-      setMatch(updated);
+      setMatch(updated); // UI atualiza na hora
     } catch (err) {
       console.error("Erro ao atirar:", err);
     } finally {
       setSubmitting(false);
     }
-  }
+  };
 
   const stateUI = {
     isLobby: match?.state === "LOBBY",
@@ -201,9 +188,9 @@ export default function usePlayLogic(match_id) {
     enemyBoardRef,
     enemyShipsRef,
 
-    stateUI,
     mePlayer,
     enemyPlayer,
+    stateUI,
     playerHasPlaced,
     enemyHasPlaced,
     isMyTurn,
@@ -212,7 +199,6 @@ export default function usePlayLogic(match_id) {
     setActiveEmoji,
     isDeckPopupOpen,
     setIsDeckPopupOpen,
-
     shots,
 
     handleDeckSave,
