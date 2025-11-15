@@ -1,14 +1,18 @@
+/* ========================================================================== */
+/*  LAYOUT GERAL DO LOBBY                                                     */
+/* ========================================================================== */
+
 .lobbyBackground {
     display: flex;
     justify-content: center;
-    align-items: flex-start; /* Alinhado ao topo */
-    height: calc(100vh - 80px); /* Altura da viewport menos o header */
+    align-items: flex-start;
+    height: calc(100vh - 80px);
     width: 100%;
     background-color: var(--primary-color);
     color: var(--font-color);
     box-sizing: border-box;
     padding: 20px;
-    overflow-y: auto; /* Permite rolagem se o conteúdo exceder */
+    overflow-y: auto;
 }
 
 .lobbyContainer {
@@ -17,11 +21,16 @@
     border-radius: 10px;
     box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
     width: 100%;
-    max-width: 1200px; /* Aumentado para acomodar a nova layout */
+    max-width: 1200px;
     display: flex;
     flex-direction: column;
     gap: 30px;
 }
+
+
+/* ========================================================================== */
+/*  CABEÇALHO – FILTRO, BUSCA E BOTÃO DE CRIAR SALA                           */
+/* ========================================================================== */
 
 .header {
     display: flex;
@@ -36,7 +45,8 @@
     align-items: center;
 }
 
-.filterSelect, .searchInput {
+.filterSelect,
+.searchInput {
     padding: 12px;
     border-radius: 5px;
     border: 1px solid #555;
@@ -65,9 +75,68 @@
     background-color: #d8931a;
 }
 
+
+/* ========================================================================== */
+/*  MINHAS PARTIDAS (“Suas Partidas”)                                         */
+/* ========================================================================== */
+
+.myMatchesSection {
+    margin-bottom: 30px;
+    padding: 20px;
+    background: rgba(0, 0, 0, 0.35);
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.myMatchesSection h2 {
+    margin: 0 0 15px 0;
+    font-size: 22px;
+    color: #fff;
+}
+
+.myMatchCard {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+
+    padding: 12px 16px;
+    margin-bottom: 10px;
+
+    background: rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+
+    color: #fff;
+}
+
+.myMatchCard strong {
+    font-size: 18px;
+    margin-bottom: 3px;
+}
+
+.myMatchCard button {
+    padding: 6px 14px;
+    background-color: #036d9e;
+    border: none;
+    border-radius: 6px;
+    color: white;
+    font-size: 14px;
+    cursor: pointer;
+    transition: opacity 0.2s;
+}
+
+.myMatchCard button:hover {
+    opacity: 0.85;
+}
+
+
+/* ========================================================================== */
+/*  LISTA DE SALAS                                                            */
+/* ========================================================================== */
+
 .roomList {
     display: grid;
-    grid-template-columns: repeat(2, 1fr); /* Duas colunas */
+    grid-template-columns: repeat(2, 1fr);
     gap: 20px;
     width: 100%;
 }
@@ -77,9 +146,11 @@
     border: 1px solid #444;
     border-radius: 8px;
     padding: 20px;
+
     display: flex;
     justify-content: space-between;
     align-items: center;
+
     transition: background-color 0.3s, border-color 0.3s;
 }
 
@@ -106,7 +177,8 @@
     gap: 15px;
 }
 
-.publicTag, .privateTag {
+.publicTag,
+.privateTag {
     padding: 5px 10px;
     border-radius: 15px;
     font-size: 0.8rem;
@@ -141,14 +213,18 @@
 }
 
 .noRooms {
-    grid-column: 1 / -1; /* Ocupa todas as colunas */
+    grid-column: 1 / -1;
     text-align: center;
     font-size: 1.2rem;
     color: rgba(255, 255, 255, 0.6);
     padding: 40px 0;
 }
 
-/* Estilos do Modal */
+
+/* ========================================================================== */
+/*  MODAIS: CRIAR SALA e ENTRAR EM SALA PRIVADA                               */
+/* ========================================================================== */
+
 .modalOverlay {
     position: fixed;
     top: 0;
@@ -156,9 +232,11 @@
     width: 100%;
     height: 100%;
     background-color: rgba(0, 0, 0, 0.7);
+
     display: flex;
     justify-content: center;
     align-items: center;
+
     z-index: 1000;
 }
 
@@ -170,6 +248,7 @@
     width: 100%;
     max-width: 500px;
     position: relative;
+
     color: var(--font-color);
 }
 
@@ -211,6 +290,7 @@
     justify-content: space-between;
 }
 
+/* Switch */
 .switch {
     position: relative;
     display: inline-block;
@@ -231,6 +311,7 @@
     left: 0;
     right: 0;
     bottom: 0;
+
     background-color: #ccc;
     transition: .4s;
 }
@@ -262,6 +343,7 @@ input:checked + .slider:before {
     border-radius: 50%;
 }
 
+/* Buttons inside modal */
 .modalActions {
     display: flex;
     justify-content: flex-end;
@@ -269,7 +351,8 @@ input:checked + .slider:before {
     margin-top: 20px;
 }
 
-.cancelButton, .confirmButton {
+.cancelButton,
+.confirmButton {
     padding: 10px 20px;
     border-radius: 5px;
     border: none;

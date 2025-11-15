@@ -86,6 +86,16 @@ export function startMatch(matchId) {
   });
 }
 
+/* POST /match/{matchId}/shoot/ */
+export function shoot(matchId, x, y) {
+  return apiFetch(`/match/${encodeURIComponent(matchId)}/shoot/`, {
+    method: "POST",
+    body: JSON.stringify({
+      coord_x: x,
+      coord_y: y
+    })
+  });
+}
 
 export default {
   getMatches,
@@ -95,4 +105,6 @@ export default {
   placeFleet,
   joinMatch,
   startMatch,
+  shoot
 };
+
