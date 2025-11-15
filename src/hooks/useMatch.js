@@ -8,6 +8,7 @@ import {
   placeFleet as apiPlaceFleet,
   joinMatch as apiJoinMatch,
   startMatch as apiStartMatch,
+  shoot as apiShoot
 } from "../services/matchService";
 
 export function useMatch() {
@@ -76,6 +77,11 @@ export function useMatch() {
     return await apiPlaceFleet(matchId, fleet);
   }, []);
 
+  // Enviar frota (alias)
+  const placeFleet = useCallback(async (matchId, fleet) => {
+    return await apiPlaceFleet(matchId, fleet);
+  }, []);
+
   // Entrar em partida
   const joinMatch = useCallback(async (matchId) => {
     return await apiJoinMatch(matchId);
@@ -86,8 +92,9 @@ export function useMatch() {
     return await apiStartMatch(matchId);
   }, []);
 
-    const placeFleet = useCallback(async (matchId, fleet) => {
-    return await apiPlaceFleet(matchId, fleet);
+  // Atirar
+  const shoot = useCallback(async (matchId, x, y) => {
+    return await apiShoot(matchId, x, y);
   }, []);
 
   return {
@@ -106,5 +113,7 @@ export function useMatch() {
     placeFleet,
     joinMatch,
     startMatch,
+
+    shoot
   };
 }
