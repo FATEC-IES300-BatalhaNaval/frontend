@@ -8,6 +8,7 @@ import Timer from "../../../Timer/Timer";
 import Deck from "../../../Deck/Deck";
 import CoordinateInput from "../CoordinateInput";
 import styles from "../Play.module.css";
+import { useCallback } from "react";
 
 export default function BattlePhase({
   mePlayer,
@@ -21,8 +22,21 @@ export default function BattlePhase({
   isMyTurn,
   activeEmoji,
   setActiveEmoji,
+  matchId,
+  skipTurn,
+  getMatch,
 }) {
   const itIsMyTurn = isMyTurn();
+
+  const handleTimeEnd = useCallback(async () => {
+    try {
+      await skipTurn(matchId);
+      await new Promise(r => setTimeout(r, 200));
+      await getMatch(matchId);
+    } catch (err) {
+      console.error("Erro ao pular turno:", err);
+    }
+  }, [matchId, skipTurn, getMatch]);
 
   return (
     <div className={styles.playContainer}>
@@ -31,11 +45,14 @@ export default function BattlePhase({
       <div className={styles.mainGameArea}>
         <div className={styles.gameStatusContainer}>
           <TurnIndicator currentPlayer={itIsMyTurn ? "player" : "enemy"} />
+
           <Timer
             duration={30}
             isRunning={itIsMyTurn}
             key={itIsMyTurn ? "player" : "enemy"}
+            onTimeEnd={handleTimeEnd}
           />
+
           {!itIsMyTurn && (
             <span style={{ color: "orange", fontSize: "1.1rem", fontWeight: "bold" }}>
               Aguarde sua vez...
@@ -80,7 +97,6 @@ export default function BattlePhase({
           </div>
         </div>
 
-        {/* Input extra para atirar via coordenada */}
         <CoordinateInput
           onShoot={handleCellClick}
           disabled={!itIsMyTurn}
