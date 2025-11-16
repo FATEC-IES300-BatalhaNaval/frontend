@@ -8,7 +8,7 @@
     align-items: flex-start;
     height: calc(100vh - 80px);
     width: 100%;
-    background-color: var(--primary-color);
+    background-color: transparent; /* Alterado para permitir que o fundo do body apareça */
     color: var(--font-color);
     box-sizing: border-box;
     padding: 20px;
