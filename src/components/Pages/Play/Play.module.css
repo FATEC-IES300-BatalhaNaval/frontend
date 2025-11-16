@@ -273,3 +273,24 @@
   font-size: 1.1rem;
   font-weight: bold;
 }
+
+.statsRow {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  margin-top: 15px;
+  gap: 20px;
+}
+
+.statsBox {
+  flex: 1;
+  background: rgba(255,255,255,0.08);
+  padding: 10px;
+  border-radius: 8px;
+  text-align: center;
+}
+
+.statsBox h4 {
+  margin-bottom: 8px;
+}
+

@@ -7,14 +7,20 @@ export default function FinishedPhase({ match, mePlayer }) {
   const winnerId = match?.winner_user_id;
   const iWon = me?.user_id === winnerId;
 
-  const winnerPlayer = match?.player?.find(
-    (p) => p.user_id === winnerId
-  );
+  const winnerPlayer = match?.player?.find(p => p.user_id === winnerId);
+  const enemy = match?.player?.find(p => p.user_id !== me?.user_id);
 
-  const shotsTotal = me?.grid_cell?.length || 0;
-  const shotsHit = me?.grid_cell?.filter(c => c.is_hit && c.ship_id).length || 0;
-  const accuracy = shotsTotal > 0
-    ? Math.round((shotsHit / shotsTotal) * 100)
+  // Stats calculation
+  const myShots = enemy?.grid_cell?.filter(c => c.is_hit) ?? [];
+  const myHits = myShots?.filter(c => c.ship_id) ?? [];
+  const myAccuracy = myShots.length > 0
+    ? Math.round((myHits.length / myShots.length) * 100)
+    : 0;
+
+  const enemyShots = me?.grid_cell?.filter(c => c.is_hit) ?? [];
+  const enemyHits = enemyShots?.filter(c => c.ship_id) ?? [];
+  const enemyAccuracy = enemyShots.length > 0
+    ? Math.round((enemyHits.length / enemyShots.length) * 100)
     : 0;
 
   const victoryMessages = [
@@ -57,9 +63,7 @@ export default function FinishedPhase({ match, mePlayer }) {
           {iWon ? "🏆" : "💥"}
         </div>
 
-        <h3>
-          {iWon ? "Você venceu!" : "Você perdeu!"}
-        </h3>
+        <h3>{iWon ? "Você venceu!" : "Você perdeu!"}</h3>
 
         {!iWon && winnerPlayer && (
           <p>
@@ -81,11 +85,21 @@ export default function FinishedPhase({ match, mePlayer }) {
 
         <hr className={styles.divider} />
 
-        <div className={styles.stats}>
-          <h4>Estatísticas</h4>
-          <p>Tiros: {shotsTotal}</p>
-          <p>Acertos: {shotsHit}</p>
-          <p>Precisão: {accuracy}%</p>
+        {/* Stats Comparison */}
+        <div className={styles.statsRow}>
+          <div className={styles.statsBox}>
+            <h4>Você</h4>
+            <p>Tiros: {myShots.length}</p>
+            <p>Acertos: {myHits.length}</p>
+            <p>Precisão: {myAccuracy}%</p>
+          </div>
+
+          <div className={styles.statsBox}>
+            <h4>{enemy?.user?.username ?? "Inimigo"}</h4>
+            <p>Tiros: {enemyShots.length}</p>
+            <p>Acertos: {enemyHits.length}</p>
+            <p>Precisão: {enemyAccuracy}%</p>
+          </div>
         </div>
 
         <button
