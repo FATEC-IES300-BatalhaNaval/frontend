@@ -8,10 +8,10 @@ import { resolveCosmeticUrl } from "../../../utils";
 export default function Settings() {
   const { me, config, ownedCosmetics, loading, refresh } = useUser();
 
-  const [primary, setPrimary] = useState("#000000");
-  const [secondary, setSecondary] = useState("#000000");
-  const [tertiary, setTertiary] = useState("#000000");
-  const [fontColor, setFontColor] = useState("#ffffff");
+  const [primary, setPrimary] = useState("#242424");
+  const [secondary, setSecondary] = useState("gray");
+  const [tertiary, setTertiary] = useState("orange");
+  const [fontColor, setFontColor] = useState("white");
 
   const [selected, setSelected] = useState({
     ICON: null,
@@ -49,6 +49,15 @@ export default function Settings() {
       SUBMARINE: config.enabled_submarine?.cosmetic_id ?? null,
     });
   }, [config]);
+
+  // Aplica as cores nas variáveis CSS globais sempre que elas mudam
+  useEffect(() => {
+    const root = document.documentElement.style;
+    root.setProperty("--primary-color", primary);
+    root.setProperty("--secondary-color", secondary);
+    root.setProperty("--tertiary-color", tertiary);
+    root.setProperty("--font-color", fontColor);
+  }, [primary, secondary, tertiary, fontColor]);
 
   if (loading) return <div>Carregando...</div>;
   if (!me) return <div>Faça login para acessar as configurações.</div>;
@@ -107,7 +116,6 @@ export default function Settings() {
 
   return (
     <div className={styles.container}>
-
       <div className={styles.headerSpacer} />
 
       <h1>Configurações</h1>
@@ -128,35 +136,61 @@ export default function Settings() {
         <h2>Cores</h2>
 
         <div className={styles.colors}>
-
           <div className={styles.colorCard}>
-            <div className={styles.colorPreview} style={{ background: primary }} />
+            <div
+              className={styles.colorPreview}
+              style={{ background: primary }}
+            />
             <span className={styles.colorLabel}>Primária</span>
-            <input type="color" value={primary} className={styles.colorInput}
-              onChange={(e) => setPrimary(e.target.value)} />
+            <input
+              type="color"
+              value={primary}
+              className={styles.colorInput}
+              onChange={(e) => setPrimary(e.target.value)}
+            />
           </div>
 
           <div className={styles.colorCard}>
-            <div className={styles.colorPreview} style={{ background: secondary }} />
+            <div
+              className={styles.colorPreview}
+              style={{ background: secondary }}
+            />
             <span className={styles.colorLabel}>Secundária</span>
-            <input type="color" value={secondary} className={styles.colorInput}
-              onChange={(e) => setSecondary(e.target.value)} />
+            <input
+              type="color"
+              value={secondary}
+              className={styles.colorInput}
+              onChange={(e) => setSecondary(e.target.value)}
+            />
           </div>
 
           <div className={styles.colorCard}>
-            <div className={styles.colorPreview} style={{ background: tertiary }} />
+            <div
+              className={styles.colorPreview}
+              style={{ background: tertiary }}
+            />
             <span className={styles.colorLabel}>Terciária</span>
-            <input type="color" value={tertiary} className={styles.colorInput}
-              onChange={(e) => setTertiary(e.target.value)} />
+            <input
+              type="color"
+              value={tertiary}
+              className={styles.colorInput}
+              onChange={(e) => setTertiary(e.target.value)}
+            />
           </div>
 
           <div className={styles.colorCard}>
-            <div className={styles.colorPreview} style={{ background: fontColor }} />
+            <div
+              className={styles.colorPreview}
+              style={{ background: fontColor }}
+            />
             <span className={styles.colorLabel}>Fonte</span>
-            <input type="color" value={fontColor} className={styles.colorInput}
-              onChange={(e) => setFontColor(e.target.value)} />
+            <input
+              type="color"
+              value={fontColor}
+              className={styles.colorInput}
+              onChange={(e) => setFontColor(e.target.value)}
+            />
           </div>
-
         </div>
       </section>
 
@@ -192,7 +226,6 @@ export default function Settings() {
                 </div>
               ))}
             </div>
-
           </div>
         ))}
       </section>

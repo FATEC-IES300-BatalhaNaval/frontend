@@ -6,496 +6,376 @@ import React, {
   useImperativeHandle,
 } from "react";
 import styles from "./Ships.module.css";
+
+// Local images
 import ship5Img from "../../assets/cosmetic/ships/aircraftCarrier/H00001.png";
 import ship4Img from "../../assets/cosmetic/ships/battleship/G00001.png";
 import ship3Img from "../../assets/cosmetic/ships/submarine/I00001.png";
 import ship2Img from "../../assets/cosmetic/ships/destroyer/F00001.png";
 import ship1Img from "../../assets/cosmetic/ships/destroyer/F00002.png";
 
-const initialShips = [
-  {
-    id: "ship5",
-    size: 5,
-    name: "Porta-Aviões",
-    img: ship5Img,
-    top: 0,
-    left: 0,
-    rotation: 0,
-    isDragging: false,
-    isPlaced: false,
-    gridX: null,
-    gridY: null,
-    alive: true,
-    isHidden: false,
-    hits: [], // Array para rastrear as coordenadas dos acertos
-    isSunk: false, // Novo estado para controlar se o navio afundou
-  },
-  {
-    id: "ship4",
-    size: 4,
-    name: "Encouraçado",
-    img: ship4Img,
-    top: 40,
-    left: 0,
-    rotation: 0,
-    isDragging: false,
-    isPlaced: false,
-    gridX: null,
-    gridY: null,
-    alive: true,
-    isHidden: false,
-    hits: [],
-    isSunk: false,
-  },
-  {
-    id: "ship3",
-    size: 3,
-    name: "Submarino",
-    img: ship3Img,
-    top: 80,
-    left: 0,
-    rotation: 0,
-    isDragging: false,
-    isPlaced: false,
-    gridX: null,
-    gridY: null,
-    alive: true,
-    isHidden: false,
-    hits: [],
-    isSunk: false,
-  },
-  {
-    id: "ship2",
-    size: 2,
-    name: "Destroier",
-    img: ship2Img,
-    top: 120,
-    left: 0,
-    rotation: 0,
-    isDragging: false,
-    isPlaced: false,
-    gridX: null,
-    gridY: null,
-    alive: true,
-    isHidden: false,
-    hits: [],
-    isSunk: false,
-  },
-  {
-    id: "ship1",
-    size: 2,
-    name: "Destroier",
-    img: ship1Img,
-    top: 160,
-    left: 0,
-    rotation: 0,
-    isDragging: false,
-    isPlaced: false,
-    gridX: null,
-    gridY: null,
-    alive: true,
-    isHidden: false,
-    hits: [],
-    isSunk: false,
-  },
-];
-
 const CELL_SIZE = 31.81;
 
-const Ships = forwardRef(({ boardRef, isLocked = false, areShipsHidden = false }, ref) => {
-  const [ships, setShips] = useState(
-    initialShips.map((ship) => ({ ...ship, isHidden: areShipsHidden }))
-  );
-  const [draggingShip, setDraggingShip] = useState(null);
-  const [selectedShipId, setSelectedShipId] = useState(null);
-  const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
-  const [originalPosition, setOriginalPosition] = useState({ top: 0, left: 0 });
+// Map backend.ship_id → local image
+const backendShipImageMap = {
+  "d8ae41a8-bac7-4cf7-9371-df8a6f04971f": ship5Img,
+  "8c95f21f-57cf-4205-b9d7-5e61497d1d3e": ship4Img,
+  "e1422080-0bd6-43be-910a-2943ce6cf76c": ship3Img,
+  "f64e1b0a-8d7d-4a53-a1f9-aafe94541da7": ship2Img,
+  "482172b6-0dad-47f3-8998-a9131035b0de": ship1Img,
+};
 
-  // Função para verificar a sobreposição entre dois navios
-  const isOverlapping = (ship1, ship2) => {
-    const ship1Right = ship1.gridX + (ship1.rotation === 0 ? ship1.size : 1);
-    const ship1Bottom = ship1.gridY + (ship1.rotation === 0 ? 1 : ship1.size);
-    const ship2Right = ship2.gridX + (ship2.rotation === 0 ? ship2.size : 1);
-    const ship2Bottom = ship2.gridY + (ship2.rotation === 0 ? 1 : ship2.size);
-
-    // Verifica se os retângulos se interceptam
-    return (
-      ship1.gridX < ship2Right &&
-      ship1Right > ship2.gridX &&
-      ship1.gridY < ship2Bottom &&
-      ship1Bottom > ship2.gridY
+const Ships = forwardRef(
+  ({ boardRef, isLocked = false, areShipsHidden = false, shipDefinitions = [] }, ref) => {
+    // ---------------------------------------------------------
+    // Initial ships mapped from backend definitions
+    // ---------------------------------------------------------
+    const [ships, setShips] = useState(() =>
+      shipDefinitions.map((s, index) => ({
+        id: `ship_${index}`,
+        ship_id: s.ship_id,
+        name: s.name,
+        size: s.length,
+        img: backendShipImageMap[s.ship_id] || ship1Img,
+        rotation: 0,
+        top: index * 40,
+        left: 0,
+        gridX: null,
+        gridY: null,
+        isDragging: false,
+        isPlaced: false,
+        isHidden: areShipsHidden,
+        hits: [],
+        isSunk: false,
+      }))
     );
-  };
 
-  // Função para validar se uma posição de navio é válida (limites e colisão)
-  const isPositionValid = (shipToValidate, allShips) => {
-    const shipCellsWidth =
-      shipToValidate.rotation === 0 ? shipToValidate.size : 1;
-    const shipCellsHeight =
-      shipToValidate.rotation === 0 ? 1 : shipToValidate.size;
+    const [draggingShip, setDraggingShip] = useState(null);
+    const [selectedShipId, setSelectedShipId] = useState(null);
 
-    // 1. Validação de limites do tabuleiro (grid de 10x10, índices 0-9)
-    if (
-      shipToValidate.gridX < 0 ||
-      shipToValidate.gridY < 0 ||
-      shipToValidate.gridX + shipCellsWidth > 10 ||
-      shipToValidate.gridY + shipCellsHeight > 10
-    ) {
-      return false; // Fora dos limites
-    }
+    // ✔ FIX: Correct state declaration
+    const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
 
-    // 2. Validação de colisão
-    const collision = allShips.some((otherShip) => {
-      if (otherShip.id === shipToValidate.id || !otherShip.isPlaced)
-        return false;
-      return isOverlapping(shipToValidate, otherShip);
+    const [originalPosition, setOriginalPosition] = useState({
+      top: 0,
+      left: 0,
     });
 
-    return !collision;
-  };
-  const handleMouseDown = (e, shipId) => {
-    if (isLocked) return;
+    // ---------------------------------------------------------
+    // Collision helpers
+    // ---------------------------------------------------------
 
-    if (e.button !== 0) return; // Apenas botão esquerdo
+    const isOverlapping = (a, b) => {
+      const aRight = a.gridX + (a.rotation === 0 ? a.size : 1);
+      const aBottom = a.gridY + (a.rotation === 0 ? 1 : a.size);
 
-    const ship = ships.find((s) => s.id === shipId);
-    if (!ship) return;
+      const bRight = b.gridX + (b.rotation === 0 ? b.size : 1);
+      const bBottom = b.gridY + (b.rotation === 0 ? 1 : b.size);
 
-    setSelectedShipId(shipId);
-    const shipElement = document.getElementById(shipId);
-    const rect = shipElement.getBoundingClientRect();
-
-    setDraggingShip(shipId);
-    // Zera o offset para que o canto do navio se alinhe ao cursor
-    setDragOffset({ x: 0, y: 0 });
-    setOriginalPosition({ top: ship.top, left: ship.left });
-
-    e.preventDefault();
-  };
-
-  const handleMouseMove = useCallback(
-    (e) => {
-      if (isLocked) return;
-
-      if (!draggingShip) return;
-
-      const boardElement = boardRef.current;
-      if (!boardElement) return;
-
-      const boardRect = boardElement.getBoundingClientRect();
-
-      setShips((prevShips) =>
-        prevShips.map((s) =>
-          s.id === draggingShip
-            ? {
-                ...s,
-                isDragging: true,
-                top: e.clientY - boardRect.top - dragOffset.y,
-                left: e.clientX - boardRect.left - dragOffset.x,
-              }
-            : s
-        )
+      return (
+        a.gridX < bRight &&
+        aRight > b.gridX &&
+        a.gridY < bBottom &&
+        aBottom > b.gridY
       );
-    },
-    [draggingShip, dragOffset, isLocked, boardRef]
-  );
+    };
 
-  const handleMouseUp = useCallback((e) => {
-    if (isLocked) return;
+    const isPositionValid = useCallback((ship, allShips) => {
+      const w = ship.rotation === 0 ? ship.size : 1;
+      const h = ship.rotation === 0 ? 1 : ship.size;
 
-    if (!draggingShip) return;
+      if (
+        ship.gridX < 0 ||
+        ship.gridY < 0 ||
+        ship.gridX + w > 10 ||
+        ship.gridY + h > 10
+      ) {
+        return false;
+      }
 
-    setShips((prevShips) =>
-      prevShips.map((s) => {
-        if (s.id === draggingShip) {
-          // Lógica de '''snap-to-grid'''
-          const boardElement = boardRef.current;
-          if (!boardElement) {
-            return { ...s, isDragging: false }; // Não faz snap se o tabuleiro não for encontrado
-          }
+      return !allShips.some((o) => {
+        if (o.id === ship.id || !o.isPlaced) return false;
+        return isOverlapping(ship, o);
+      });
+    }, []);
 
-          const boardRect = boardElement.getBoundingClientRect();
-          // Posição do mouse relativa ao canto superior esquerdo do tabuleiro
-          const mouseX = e.clientX - boardRect.left;
-          const mouseY = e.clientY - boardRect.top;
-          const relativeX = mouseX - CELL_SIZE;
-          const relativeY = mouseY - CELL_SIZE;
+    // ---------------------------------------------------------
+    // Drag & Drop
+    // ---------------------------------------------------------
 
-          // Calcula a célula do grid mais próxima
-          const snappedGridX = Math.round(relativeX / CELL_SIZE);
-          const snappedGridY = Math.round(relativeY / CELL_SIZE);
+    const handleMouseDown = (e, shipId) => {
+      if (isLocked || e.button !== 0) return;
 
-          // Posição e dimensões do navio em coordenadas de grid
-          const newShipPosition = {
-            ...s,
-            gridX: snappedGridX,
-            gridY: snappedGridY,
-          };
+      const ship = ships.find((s) => s.id === shipId);
+      if (!ship) return;
 
-          if (isPositionValid(newShipPosition, prevShips)) {
-            const snappedLeft = (snappedGridX * CELL_SIZE) + CELL_SIZE;
-            const snappedTop = (snappedGridY * CELL_SIZE) + CELL_SIZE;
+      setSelectedShipId(shipId);
+      setDraggingShip(shipId);
+
+      // offset = where user clicked relative to ship
+      const rect = e.target.getBoundingClientRect();
+      setDragOffset({
+        x: e.clientX - rect.left,
+        y: e.clientY - rect.top,
+      });
+
+      setOriginalPosition({ top: ship.top, left: ship.left });
+      e.preventDefault();
+    };
+
+    const handleMouseMove = useCallback(
+      (e) => {
+        if (!draggingShip || isLocked) return;
+
+        const board = boardRef.current;
+        if (!board) return;
+
+        const rect = board.getBoundingClientRect();
+
+        setShips((prev) =>
+          prev.map((s) =>
+            s.id === draggingShip
+              ? {
+                  ...s,
+                  isDragging: true,
+                  top: e.clientY - rect.top - dragOffset.y,
+                  left: e.clientX - rect.left - dragOffset.x,
+                }
+              : s
+          )
+        );
+      },
+      [draggingShip, dragOffset, isLocked, boardRef]
+    );
+
+    const handleMouseUp = useCallback(
+      (e) => {
+        if (!draggingShip || isLocked) return;
+
+        setShips((prev) =>
+          prev.map((s) => {
+            if (s.id !== draggingShip) return s;
+
+            const board = boardRef.current;
+            if (!board) return { ...s, isDragging: false };
+
+            const rect = board.getBoundingClientRect();
+
+            const relX = e.clientX - rect.left - CELL_SIZE;
+            const relY = e.clientY - rect.top - CELL_SIZE;
+
+            const gx = Math.round(relX / CELL_SIZE);
+            const gy = Math.round(relY / CELL_SIZE);
+
+            const newPos = { ...s, gridX: gx, gridY: gy };
+
+            if (isPositionValid(newPos, prev)) {
+              return {
+                ...s,
+                isDragging: false,
+                isPlaced: true,
+                gridX: gx,
+                gridY: gy,
+                top: gy * CELL_SIZE + CELL_SIZE,
+                left: gx * CELL_SIZE + CELL_SIZE,
+              };
+            }
+
             return {
               ...s,
               isDragging: false,
-              top: snappedTop,
-              left: snappedLeft,
-              isPlaced: true,
-              gridX: snappedGridX,
-              gridY: snappedGridY,
+              top: originalPosition.top,
+              left: originalPosition.left,
             };
-          }
-
-          // Se a posição não for válida (fora dos limites ou colisão),
-          // retorna para a posição original antes do arraste.
-
-          // Se não estava posicionado, retorna para a área inicial.
-          return {
-            ...s,
-            isDragging: false,
-            top: originalPosition.top,
-            left: originalPosition.left,
-            isPlaced: s.isPlaced,
-            gridX: s.gridX,
-            gridY: s.gridY,
-          };
-        }
-        return s;
-      })
-    );
-
-    setDraggingShip(null);
-  }, [draggingShip, boardRef, originalPosition, isLocked, isPositionValid]);
-
-  const handleContextMenu = (e, shipId) => {
-    if (isLocked) return;
-
-    e.preventDefault();
-
-    const ship = ships.find((s) => s.id === shipId);
-    if (!ship || !ship.isPlaced) return;
-
-    const newRotation = (ship.rotation + 90) % 180;
-    const rotatedShip = { ...ship, rotation: newRotation };
-
-    if (isPositionValid(rotatedShip, ships)) {
-      setShips((prevShips) =>
-        prevShips.map((s) => (s.id === shipId ? rotatedShip : s))
-      );
-    }
-  };
-
-  const handleKeyDown = useCallback(
-    (e) => {
-      if (isLocked) return;
-
-      if (!selectedShipId) return;
-
-      const ship = ships.find((s) => s.id === selectedShipId);
-      // Só permite mover com o teclado se o navio já estiver no tabuleiro.
-      if (!ship || !ship.isPlaced) return;
-
-      const direction = {
-        ArrowUp: { x: 0, y: -1 },
-        ArrowDown: { x: 0, y: 1 },
-        ArrowLeft: { x: -1, y: 0 },
-        ArrowRight: { x: 1, y: 0 },
-      }[e.key];
-
-      if (direction) {
-        e.preventDefault();
-        const newGridX = ship.gridX + direction.x;
-        const newGridY = ship.gridY + direction.y;
-        const newPosition = { ...ship, gridX: newGridX, gridY: newGridY };
-
-        if (isPositionValid(newPosition, ships)) {
-          // Atualiza a posição do navio se o movimento for válido
-          setShips((prevShips) =>
-            prevShips.map((s) => {
-              if (s.id === selectedShipId) {                const newLeft = (newGridX * CELL_SIZE) + CELL_SIZE;
-                const newTop = (newGridY * CELL_SIZE) + CELL_SIZE;
-                return { ...s, gridX: newGridX, gridY: newGridY, top: newTop, left: newLeft };
-              }
-              return s;
-            })
-          );
-        }
-      }
-      // Rotaciona o navio com a tecla Enter
-      if (e.key === "Enter") {
-        e.preventDefault();
-        const newRotation = (ship.rotation + 90) % 180;
-        const rotatedShip = { ...ship, rotation: newRotation };
-
-        if (isPositionValid(rotatedShip, ships)) {
-          setShips((prevShips) =>
-            prevShips.map((s) => (s.id === selectedShipId ? rotatedShip : s))
-          );
-        }
-      }
-    },
-    [selectedShipId, ships, isPositionValid, isLocked]
-  );
-
-  const placeShipsRandomly = useCallback(() => {
-    if (!boardRef.current) return;
-
-    setShips((currentShips) => {
-      const placedShips = [];
-      const newShips = currentShips.map((ship) => {
-        let tempShip;
-        let validPositionFound = false;
-        let attempts = 0;
-
-        while (!validPositionFound && attempts < 100) {
-          attempts++;
-
-          const randomRotation = Math.random() < 0.5 ? 0 : 90;
-          const shipCellsWidth = randomRotation === 0 ? ship.size : 1;
-          const shipCellsHeight = randomRotation === 0 ? 1 : ship.size;
-
-          const maxX = 10 - shipCellsWidth;
-          const maxY = 10 - shipCellsHeight;
-
-          const randomGridX = Math.floor(Math.random() * (maxX + 1));
-          const randomGridY = Math.floor(Math.random() * (maxY + 1));
-
-          tempShip = {
-            ...ship,
-            rotation: randomRotation,
-            gridX: randomGridX,
-            gridY: randomGridY,
-          };
-
-          const collision = placedShips.some((placed) =>
-            isOverlapping(tempShip, placed)
-          );
-
-          if (!collision) {
-            validPositionFound = true;
-            const finalShip = {
-              ...tempShip,
-              top: randomGridY * CELL_SIZE + CELL_SIZE,
-              left: randomGridX * CELL_SIZE + CELL_SIZE,
-              isPlaced: true,
-              isHidden: ship.isHidden, // Mantém a propriedade isHidden
-            };
-            placedShips.push(finalShip);
-            return finalShip;
-          }
-        }
-        return ship; // Retorna o navio original se não encontrar posição
-      });
-      return newShips;
-    });
-  }, [boardRef]);
-
-  useImperativeHandle(ref, () => ({
-    randomize: placeShipsRandomly,
-    getShipPositions: () => {
-      // Retorna posições e informações dos navios
-      const positions = {};
-      ships.forEach((ship) => {
-        if (ship.isPlaced) {
-          positions[ship.id] = { ...ship, cells: [] };
-          for (let i = 0; i < ship.size; i++) {
-            if (ship.rotation === 0) {
-              // Horizontal
-              positions.push({ x: ship.gridX + i, y: ship.gridY });
-            } else {
-              // Vertical
-              positions.push({ x: ship.gridX, y: ship.gridY + i });
-            }
-          }
-        }
-      });
-      return positions;
-    },
-    getShips: () => ships, // Expõe o estado atual dos navios
-    registerHit: (x, y) => {
-      let hitShipId = null;
-      const newShips = ships.map(ship => {
-        const isPartOfShip = ship.isPlaced && Array.from({ length: ship.size }).some((_, i) =>
-          ship.rotation === 0
-            ? ship.gridX + i === x && ship.gridY === y
-            : ship.gridX === x && ship.gridY + i === y
+          })
         );
 
-        if (isPartOfShip) {
-          hitShipId = ship.id;
-          const newHits = [...ship.hits, { x, y }];
-          const isSunk = newHits.length === ship.size;
-          return { ...ship, hits: newHits, isSunk: isSunk };
-        }
-        return ship;
-      });
-      setShips(newShips);
-      return hitShipId; // Retorna o ID do navio atingido
-    },
-    revealShip: (x, y) => {
-      setShips((prevShips) =>
-        prevShips.map((ship) => {
-          const isPartOfShip = () => {
-            if (!ship.isPlaced) return false;
-            for (let i = 0; i < ship.size; i++) {
-              if (ship.rotation === 0) {
-                if (ship.gridX + i === x && ship.gridY === y) return true;
-              } else {
-                if (ship.gridX === x && ship.gridY + i === y) return true;
-              }
-            }
-            return false;
-          };
+        setDraggingShip(null);
+      },
+      [draggingShip, boardRef, originalPosition, isLocked, isPositionValid]
+    );
 
-          if (isPartOfShip()) {
-            return { ...ship, isHidden: false };
+    // ---------------------------------------------------------
+    // Keyboard
+    // ---------------------------------------------------------
+
+    const handleKeyDown = useCallback(
+      (e) => {
+        if (isLocked || !selectedShipId) return;
+
+        const ship = ships.find((s) => s.id === selectedShipId);
+        if (!ship || !ship.isPlaced) return;
+
+        const move = {
+          ArrowUp: { x: 0, y: -1 },
+          ArrowDown: { x: 0, y: 1 },
+          ArrowLeft: { x: -1, y: 0 },
+          ArrowRight: { x: 1, y: 0 },
+        }[e.key];
+
+        if (move) {
+          e.preventDefault();
+
+          const newX = ship.gridX + move.x;
+          const newY = ship.gridY + move.y;
+
+          const newPos = { ...ship, gridX: newX, gridY: newY };
+
+          if (isPositionValid(newPos, ships)) {
+            setShips((prev) =>
+              prev.map((s) =>
+                s.id === selectedShipId
+                  ? {
+                      ...s,
+                      gridX: newX,
+                      gridY: newY,
+                      top: newY * CELL_SIZE + CELL_SIZE,
+                      left: newX * CELL_SIZE + CELL_SIZE,
+                    }
+                  : s
+              )
+            );
           }
-          return ship;
-        })
-      );
-    },
-  }));
+        }
 
-  // Posiciona os navios aleatoriamente no tabuleiro ao carregar
-  useEffect(() => {
-    if (!isLocked) {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          const newRot = (ship.rotation + 90) % 180;
+          const rotated = { ...ship, rotation: newRot };
+
+          if (isPositionValid(rotated, ships)) {
+            setShips((prev) =>
+              prev.map((s) => (s.id === selectedShipId ? rotated : s))
+            );
+          }
+        }
+      },
+      [ships, isLocked, selectedShipId, isPositionValid]
+    );
+
+    // ---------------------------------------------------------
+    // Random ship placement
+    // ---------------------------------------------------------
+
+    const placeShipsRandomly = useCallback(() => {
+      if (!boardRef.current) return;
+
+      setShips((prev) => {
+        const placed = [];
+
+        return prev.map((ship) => {
+          let attempt = 0;
+          let valid = false;
+          let pos = ship;
+
+          while (!valid && attempt < 100) {
+            attempt++;
+
+            const rot = Math.random() < 0.5 ? 0 : 90;
+            const w = rot === 0 ? ship.size : 1;
+            const h = rot === 0 ? 1 : ship.size;
+
+            const gx = Math.floor(Math.random() * (10 - w));
+            const gy = Math.floor(Math.random() * (10 - h));
+
+            const temp = { ...ship, rotation: rot, gridX: gx, gridY: gy };
+
+            if (!placed.some((p) => isOverlapping(temp, p))) {
+              valid = true;
+              pos = {
+                ...temp,
+                isPlaced: true,
+                top: gy * CELL_SIZE + CELL_SIZE,
+                left: gx * CELL_SIZE + CELL_SIZE,
+              };
+              placed.push(pos);
+            }
+          }
+
+          return pos;
+        });
+      });
+    }, [boardRef]);
+
+    // ---------------------------------------------------------
+    // Global listeners
+    // ---------------------------------------------------------
+
+    useEffect(() => {
       placeShipsRandomly();
-    }
-  }, [placeShipsRandomly, isLocked]); // Executa quando o boardRef estiver disponível
+    }, [placeShipsRandomly]);
 
-  useEffect(() => {
-    if (draggingShip) {
-      window.addEventListener("mousemove", handleMouseMove);
-      window.addEventListener("mouseup", handleMouseUp);
-    } else {
-      window.removeEventListener("mousemove", handleMouseMove);
-      window.removeEventListener("mouseup", handleMouseUp);
-    }
+    useEffect(() => {
+      if (draggingShip) {
+        window.addEventListener("mousemove", handleMouseMove);
+        window.addEventListener("mouseup", handleMouseUp);
+      } else {
+        window.removeEventListener("mousemove", handleMouseMove);
+        window.removeEventListener("mouseup", handleMouseUp);
+      }
 
-    const handleGlobalKeyDown = (e) => handleKeyDown(e);
-    if (selectedShipId) {
-      window.addEventListener("keydown", handleGlobalKeyDown);
-    }
+      const keyHandler = (e) => handleKeyDown(e);
+      window.addEventListener("keydown", keyHandler);
 
-    return () => {
-      window.removeEventListener("mousemove", handleMouseMove);
-      window.removeEventListener("mouseup", handleMouseUp);
-      window.removeEventListener("keydown", handleGlobalKeyDown);
-    };
-  }, [
-    draggingShip,
-    handleMouseMove,
-    handleMouseUp,
-    selectedShipId,
-    handleKeyDown,
-    boardRef,
-  ]);
+      return () => {
+        window.removeEventListener("mousemove", handleMouseMove);
+        window.removeEventListener("mouseup", handleMouseUp);
+        window.removeEventListener("keydown", keyHandler);
+      };
+    }, [draggingShip, handleMouseMove, handleMouseUp, handleKeyDown]);
 
-  return (
-    <div className={styles.ships}>
-      {ships.map(
-        (ship) =>
-          (!ship.isHidden || ship.isSunk) && ( // Mostra o navio se não estiver escondido OU se estiver afundado
+    // ---------------------------------------------------------
+    // Exposed API for Play.jsx
+    // ---------------------------------------------------------
+
+    useImperativeHandle(ref, () => ({
+  randomize: placeShipsRandomly,
+
+  // must return a plain array (placeFleet will wrap it before sending)
+  getFleetForBackend: () =>
+    ships
+      .filter((s) => s.isPlaced)
+      .map((s) => ({
+        ship_id: s.ship_id,
+        head_coord_x: s.gridX,
+        head_coord_y: s.gridY,
+        orientation: s.rotation === 0 ? "HORIZONTAL" : "VERTICAL",
+      })),
+
+  setFleetFromBackend: (fleetArray) => {
+    if (!Array.isArray(fleetArray)) return;
+    setShips((prev) =>
+      prev.map((s) => {
+        const placed = fleetArray.find((f) => f.ship_id === s.ship_id);
+        if (!placed) return s;
+        const rot = placed.orientation === "HORIZONTAL" ? 0 : 90;
+        return {
+          ...s,
+          gridX: placed.head_coord_x,
+          gridY: placed.head_coord_y,
+          rotation: rot,
+          isPlaced: true,
+          top: placed.head_coord_y * CELL_SIZE + CELL_SIZE,
+          left: placed.head_coord_x * CELL_SIZE + CELL_SIZE,
+        };
+      })
+    );
+  },
+
+  // expose fleet UI state to parent (Play.jsx was calling this)
+  getShips: () => ships,
+}));
+
+
+
+    // ---------------------------------------------------------
+    // Render
+    // ---------------------------------------------------------
+
+    return (
+      <div className={styles.ships}>
+        {ships.map((ship) =>
+          !ship.isHidden || ship.isSunk ? (
             <div
               key={ship.id}
               id={ship.id}
@@ -511,18 +391,14 @@ const Ships = forwardRef(({ boardRef, isLocked = false, areShipsHidden = false }
                 transform: `rotate(${ship.rotation}deg)`,
               }}
               onMouseDown={(e) => handleMouseDown(e, ship.id)}
-              onContextMenu={(e) => handleContextMenu(e, ship.id)}
             >
-              <img
-                src={ship.img}
-                alt={`Ship ${ship.size}`}
-                className={styles.shipImage}
-              />
+              <img src={ship.img} alt="ship" className={styles.shipImage} />
             </div>
-          )
-      )}
-    </div>
-  );
-});
+          ) : null
+        )}
+      </div>
+    );
+  }
+);
 
 export default Ships;

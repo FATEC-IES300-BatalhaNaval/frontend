@@ -6,16 +6,20 @@ import perfil_icon from "../../../assets/cosmetic/icons/E00001.png";
 import { resolveCosmeticUrl } from "../../../utils";
 
 export default function Perfil() {
-  const { me, loading } = useUser();
+  const { me, config, loading } = useUser();
 
   if (loading) return <div>Carregando...</div>;
   if (!me) return <div>Usuário não autenticado.</div>;
 
   const username = me.username || "#user";
-
-  const icon = me?.currentCosmetic?.currentIcon || null;
-
-  const iconSrc = resolveCosmeticUrl(icon, perfil_icon);
+  const iconSrc = resolveCosmeticUrl(
+    config?.enabled_icon?.link,
+    "/profileicon.png"
+  );
+  const backgroundSrc = resolveCosmeticUrl(
+    config?.enabled_background?.link,
+    "/profileicon.png"
+  );
 
   const lvl = 0;
   const exp = 0;
@@ -27,9 +31,13 @@ export default function Perfil() {
   const derrotas = 0;
 
   return (
-    <div className={styles.Container}>
+    <div
+      className={styles.Container}
+      style={{
+        backgroundImage: backgroundSrc ? `url(${backgroundSrc})` : "",
+      }}
+    >
       <div className={styles.Header}>
-
         <img
           src={iconSrc}
           alt="User Icon"

@@ -3,6 +3,7 @@
   padding: 32px;
   box-sizing: border-box;
   color: var(--font-color, #fff);
+  height: 100vh;
 }
 
 /* Avatar e header */
@@ -45,7 +46,7 @@
 .ProgressBar {
   width: 100%;
   height: 16px;
-  background: rgba(255,255,255,0.15);
+  background: rgba(255, 255, 255, 0.15);
   border-radius: 8px;
   margin-top: 8px;
   overflow: hidden;
@@ -75,7 +76,7 @@
 
 .StatCard {
   padding: 16px;
-  background: rgba(255,255,255,0.08);
+  background: rgba(255, 255, 255, 0.08);
   border-radius: 10px;
   text-align: center;
 }

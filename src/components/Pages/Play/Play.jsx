@@ -1,302 +1,118 @@
-import { useRef, useState, useEffect, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
-import styles from "./Play.module.css";
-import Board from "../../Board/Board";
-import Ships from "../../Ships/Ships";
-import EmojiBox from "../../EmojiBox/EmojiBox";
-import EmojiAnimation from "../../EmojiBox/EmojiAnimation";
-import Placar from "../../Placar/Placar";
-import Deck from "../../Deck/Deck";
-import TurnIndicator from "../../TurnIndicator/TurnIndicator";
-import Timer from "../../Timer/Timer";
-import PopupComponent from "../Perfil/elements/PopupComponent";
-import EndGameAnimation from "../../EndGameAnimation/EndGameAnimation";
-import OpponentInfoCard from "../../OpponentInfoCard/OpponentInfoCard";
-import explosionSound from '../../../sound/sfx/explosion.wav'; // Importa o som de explosão
-import sunkSound from '../../../sound/sfx/sunk.wav'; // Importa o som de navio afundando
-import waterSound from '../../../sound/sfx/water.wav'; // Importa o som de água
-import opponentAvatar from '../../../assets/cosmetic/icons/E00001.png'; // Importa o avatar do oponente
-import { useAuth } from "../../../hooks/useAuth";
+import { useParams } from "react-router-dom";
 
-function Play({ setIsGameEnding }) { // Recebe setIsGameEnding como prop
-  const { user, setUserAtt } = useAuth();
-  const navigate = useNavigate();
-  const boardRef = useRef(null);
-  const shipsRef = useRef(null);
-  const enemyBoardRef = useRef(null);
-  const enemyShipsRef = useRef(null);
-  const [shots, setShots] = useState([]); // Estado para armazenar os tiros
-  const [activeEmoji, setActiveEmoji] = useState(null);
-  const [isPlacementConfirmed, setIsPlacementConfirmed] = useState(false);
-  const [playerShipsState, setPlayerShipsState] = useState([]);
-  const [enemyShipsState, setEnemyShipsState] = useState([]);
-  const [currentPlayer, setCurrentPlayer] = useState('player'); // 'player' ou 'enemy'
-  const [isDeckPopupOpen, setIsDeckPopupOpen] = useState(false);
-  const [isGameOver, setIsGameOver] = useState(false);
-  const [gameResult, setGameResult] = useState(null); // 'win' ou 'lose'
-  const [showPostGamePopup, setShowPostGamePopup] = useState(false); // Estado para o popup pós-jogo
-  const explosionAudioRef = useRef(null); // Ref para o áudio de explosão
-  const sunkAudioRef = useRef(null); // Ref para o áudio de navio afundando
-  const waterAudioRef = useRef(null); // Ref para o áudio de água
+// Hook centralizado
+import usePlayLogic from "./usePlayLogic";
 
-  const resetGameState = useCallback(() => {
-    setShots([]);
-    setIsPlacementConfirmed(false);
-    setPlayerShipsState([]);
-    setEnemyShipsState([]);
-    setCurrentPlayer('player');
-    setIsGameOver(false);
-    setGameResult(null);
-    setShowPostGamePopup(false);
-    if (setIsGameEnding) setIsGameEnding(false);
+// Fases
+import LobbyPhase from "./phases/LobbyPhase";
+import PlacementPhase from "./phases/PlacementPhase";
+import WaitingPlacementPhase from "./phases/WaitingPlacementPhase";
+import BattlePhase from "./phases/BattlePhase";
+import FinishedPhase from "./phases/FinishedPhase";
 
-    // Força a randomização dos navios para a nova partida
-    setTimeout(() => {
-      if (shipsRef.current) shipsRef.current.randomize();
-    }, 0);
-  }, [setIsGameEnding]);
+export default function Play() {
+  const { match_id } = useParams();
 
-  const handleRandomizeClick = () => {
-    if (shipsRef.current) {
-      shipsRef.current.randomize();
-    }
-  };
+  const {
+    // estado geral
+    loading,
+    match,
+    shipDefs,
 
-  const handleCellClick = (x, y) => {
-    // Só permite clicar se for a vez do jogador, o jogo já começou e não terminou
-    if (currentPlayer !== 'player' || !isPlacementConfirmed || isGameOver) return;
+    // refs
+    boardRef,
+    shipsRef,
+    enemyBoardRef,
+    enemyShipsRef,
 
-    // Define as colunas para a conversão de coordenadas
-    const cols = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'];
-    const coordinate = `${cols[x]}${y + 1}`;
+    // helpers
+    mePlayer,
+    enemyPlayer,
+    playerHasPlaced,
+    enemyHasPlaced,
+    stateUI,
 
-    // Verifica se a célula já foi atingida
-    if (shots.some(shot => shot.x === x && shot.y === y)) {
-      return;
-    }
+    // estados
+    submitting,
+    shots,
+    activeEmoji,
+    setActiveEmoji,
+    isDeckPopupOpen,
+    setIsDeckPopupOpen,
+    isMyTurn,
 
-    // Registra o tiro no componente Ships e obtém o ID do navio atingido
-    const hitShipId = enemyShipsRef.current.registerHit(x, y);
+    // ações
+    handleStartMatch,
+    handleConfirmPlacement,
+    handleDeckSave,
+    handleCellClick,
+  } = usePlayLogic(match_id);
 
-    if (hitShipId) {
-      alert(`Acertou em ${coordinate}!`);
-      if (explosionAudioRef.current) explosionAudioRef.current.play(); // Toca o som de explosão
-    } else {
-      alert(`Errou em ${coordinate}!`);
-      if (waterAudioRef.current) waterAudioRef.current.play(); // Toca o som de água
-    }
+  if (loading) {
+    return <div style={{ padding: 20 }}>Carregando partida...</div>;
+  }
 
-    // Adiciona o novo tiro ao estado
-    setShots([...shots, { x, y, isHit: !!hitShipId }]);
-    // Atualiza o estado dos navios inimigos para o placar
-    setEnemyShipsState(enemyShipsRef.current.getShips());
-    setCurrentPlayer('enemy'); // Passa a vez para o inimigo
-  };
+  if (!match) {
+    return <div style={{ padding: 20 }}>Erro ao carregar partida.</div>;
+  }
 
-  const handleConfirmClick = () => {
-    console.log("Posicionamento confirmado!");
-    setIsPlacementConfirmed(true);
-  };
+  // --------------------------- PHASES ---------------------------
 
-  const handleTimeEnd = () => {
-    console.log("O tempo acabou!");
-    // Troca o turno quando o tempo acaba, se o jogo não terminou
-    setCurrentPlayer(prevPlayer => prevPlayer === 'player' ? 'enemy' : 'player');
-  };
-
-  // Simula a jogada do inimigo e devolve o turno para o jogador
-  useEffect(() => {
-    if (currentPlayer === 'enemy' && isPlacementConfirmed) {
-      const enemyTurnTimeout = setTimeout(() => {
-        console.log("Inimigo jogou, sua vez!");
-        // Aqui você adicionaria a lógica da jogada do inimigo
-        setCurrentPlayer('player');
-      }, 2000); // Simula um delay para a jogada do inimigo
-
-      return () => clearTimeout(enemyTurnTimeout);
-    }
-  }, [currentPlayer, isPlacementConfirmed]);
-
-  useEffect(() => {
-    // Posiciona os navios inimigos aleatoriamente quando o jogador confirma sua posição
-    if (isPlacementConfirmed && enemyShipsRef.current) {
-      setTimeout(() => { // Pequeno delay para garantir que o estado de lock foi propagado
-        enemyShipsRef.current.randomize();
-        setPlayerShipsState(shipsRef.current.getShips());
-        setEnemyShipsState(enemyShipsRef.current.getShips());
-      }, 100);
-    }
-  }, [isPlacementConfirmed]);
-
-  // Verifica se o jogo terminou
-  useEffect(() => {
-    if (!isPlacementConfirmed) return;
-
-    // Checa vitória
-    const allEnemyShipsSunk = enemyShipsState.length > 0 && enemyShipsState.every(ship => ship.isSunk);
-    if (allEnemyShipsSunk) {
-      setGameResult('win');
-      setIsGameOver(true);
-      if (setIsGameEnding) setIsGameEnding(true); // Notifica App.jsx que o jogo está terminando
-    }
-
-    // Checa derrota (a lógica de jogada do inimigo precisaria ser implementada para isso)
-    // const allPlayerShipsSunk = playerShipsState.length > 0 && playerShipsState.every(ship => ship.isSunk);
-    // if (allPlayerShipsSunk) {
-    //   setGameResult('lose');
-    //   setIsGameOver(true);
-    //   if (setIsGameEnding) setIsGameEnding(true); // Notifica App.jsx que o jogo está terminando
-    // }
-  }, [enemyShipsState, playerShipsState, isPlacementConfirmed, setIsGameEnding]);
-
-  // Expondo uma função no window para fins de depuração para chamar o EndGame
-  useEffect(() => {
-    window.triggerEndGame = (result) => {
-      if (result === 'win' || result === 'lose') {
-        setGameResult(result);
-        setIsGameOver(true);
-        if (setIsGameEnding) setIsGameEnding(true); // Notifica App.jsx que o jogo está terminando
-        console.log(`Fim de jogo acionado via console com resultado: ${result}`);
-      } else {
-        console.error("Resultado inválido. Use 'win' ou 'lose'.");
-      }
-    };
-
-    // Limpa a função quando o componente é desmontado
-    return () => {
-      delete window.triggerEndGame;
-    };
-  }, [setIsGameEnding]); // Adiciona setIsGameEnding como dependência
-
-  const handleEmojiSelect = (emoji) => {
-    // Define o emoji ativo para acionar a animação
-    setActiveEmoji(emoji);
-    console.log(`Emoji selecionado: ${emoji.id}. Animação: ${emoji.animated}`);
-  };
-
-  const handleAnimationEnd = () => {
-    // Limpa o emoji ativo quando a animação termina
-    setActiveEmoji(null);
-  };
-
-  const handleDeckSave = useCallback(() => {
-    // Atualiza o estado do usuário para refletir as mudanças de cartas
-    if (typeof setUserAtt === 'function') setUserAtt((prev) => !prev);
-  }, [setUserAtt]);
-
-  const handleBackToLobby = () => {
-    resetGameState();
-    navigate('/lobby');
-  };
-
-  return (
-    <div className={styles.playContainer}>
-      <audio ref={explosionAudioRef} src={explosionSound} preload="auto" /> {/* Elemento de áudio para a explosão */}
-      <audio ref={sunkAudioRef} src={sunkSound} preload="auto" /> {/* Elemento de áudio para o navio afundando */}
-      <audio ref={waterAudioRef} src={waterSound} preload="auto" /> {/* Elemento de áudio para a água */} 
-      {isGameOver && <EndGameAnimation result={gameResult} onEnd={() => {
-        setIsGameOver(false); // Esconde a animação
-        setShowPostGamePopup(true); // Mostra o popup de fim de jogo
-      }} />}
-      {showPostGamePopup && (
-        <div className={styles.postGamePopupOverlay}>
-          <div className={styles.postGamePopup}>
-            <h3>Partida Finalizada</h3>
-            <div className={styles.postGameButtons}>
-              <button onClick={resetGameState} className={styles.confirmButton}>Jogar de Novo</button>
-              <button onClick={handleBackToLobby} className={styles.randomizeButton}>Voltar ao Lobby</button>
-            </div>
-          </div>
-        </div>
-      )}
-      {isPlacementConfirmed && (
-        <div className={styles.playerInfoContainer}>
-          <Placar titulo="Seu Placar" ships={playerShipsState} />
-          <OpponentInfoCard
-            name={user?.data?.username || user?.username || "Jogador"}
-            level={user?.data?.level || 1}
-            status="Pronto"
-            avatar={user?.data?.active_avatar?.image_url || opponentAvatar}
-          />
-        </div>
-      )}
-      
-      <div className={styles.mainGameArea}>
-        {!isPlacementConfirmed && (
-          <div className={styles.placementTimerContainer}>
-            <span className={styles.placementTimerLabel}>Tempo para Posicionar</span>
-            {/* O timer inicia e confirma a posição ao terminar */}
-            <Timer duration={90} onTimeEnd={handleConfirmClick} isRunning={!isPlacementConfirmed} key="placement-timer" />
-          </div>
-        )}
-        {isPlacementConfirmed && (
-          <div className={styles.gameStatusContainer}>
-            <TurnIndicator currentPlayer={currentPlayer} />
-            <Timer duration={30} onTimeEnd={handleTimeEnd} isRunning={currentPlayer === 'player' && !isGameOver} key={currentPlayer} />
-          </div>
-        )}
-        <div className={styles.boardsContainer}>
-          {/* Tabuleiro do Jogador */}
-          <div className={styles.boardWrapper}>
-            <Board ref={boardRef}><Ships ref={shipsRef} boardRef={boardRef} isLocked={isPlacementConfirmed} /></Board>
-            {!isPlacementConfirmed && (
-              <div className={styles.buttonContainer}>
-                <button className={styles.randomizeButton} onClick={handleRandomizeClick}>
-                  Reposicionar Navios
-                </button>
-                <button className={styles.confirmButton} onClick={handleConfirmClick}>
-                  Confirmar Posicionamento
-                </button>
-              </div>
-            )}
-            {!isPlacementConfirmed && (
-              <div className={styles.deckContainer} onClick={() => setIsDeckPopupOpen(true)}>
-              <Deck />
-              </div>
-            )}
-          </div>
-          {/* Tabuleiro Inimigo (Réplica) */}
-          {isPlacementConfirmed && (
-            <div className={styles.boardWrapper}>
-              <Board ref={enemyBoardRef} onCellClick={handleCellClick} shots={shots} >
-                <Ships ref={enemyShipsRef} boardRef={enemyBoardRef} isLocked={true} areShipsHidden={true} />
-              </Board>
-            </div>
-          )}
-        </div>
-        {isPlacementConfirmed && (
-          <div className={styles.bottomControlsContainer}>
-            <EmojiAnimation
-              emoji={activeEmoji}
-              onAnimationEnd={handleAnimationEnd}
-            />
-            <EmojiBox onEmojiSelect={handleEmojiSelect} />
-            <div className={styles.gameDeckContainer}>
-              <Deck />
-            </div>
-          </div>
-        )}
-      </div>
-      <div className={styles.opponentInfoContainer}>
-        {isPlacementConfirmed && (
-          <Placar titulo="Placar Inimigo" ships={enemyShipsState} />
-        )}
-        <OpponentInfoCard
-          name="Computador"
-          level={5}
-          status={isPlacementConfirmed ? "Pronto" : "Posicionando"}
-          avatar={opponentAvatar}
-        />
-      </div>
-      <PopupComponent
-        isOpen={isDeckPopupOpen}
-        onClose={() => setIsDeckPopupOpen(false)}
-        type="cards"
-        userData={user?.data || user}
-        onSave={handleDeckSave}
+  if (stateUI.isLobby) {
+    return (
+      <LobbyPhase
+        match={match}
+        meId={mePlayer()?.user_id}
+        submitting={submitting}
+        handleStartMatch={handleStartMatch}
       />
-    </div>
-  );
-}
+    );
+  }
 
-export default Play;
+  if (stateUI.isPlacement) {
+    if (!playerHasPlaced()) {
+      return (
+        <PlacementPhase
+          shipDefs={shipDefs}
+          boardRef={boardRef}
+          shipsRef={shipsRef}
+          submitting={submitting}
+          handleConfirmPlacement={handleConfirmPlacement}
+          handleDeckSave={handleDeckSave}
+          isDeckPopupOpen={isDeckPopupOpen}
+          setIsDeckPopupOpen={setIsDeckPopupOpen}
+          user={mePlayer()?.user}
+        />
+      );
+    }
+
+    if (!enemyHasPlaced()) {
+      return <WaitingPlacementPhase />;
+    }
+  }
+
+  if (stateUI.isActive) {
+    return (
+      <BattlePhase
+        mePlayer={mePlayer}
+        enemyPlayer={enemyPlayer}
+        shipDefs={shipDefs}
+        boardRef={boardRef}
+        shipsRef={shipsRef}
+        enemyBoardRef={enemyBoardRef}
+        enemyShipsRef={enemyShipsRef}
+        shots={shots}
+        activeEmoji={activeEmoji}
+        setActiveEmoji={setActiveEmoji}
+        handleCellClick={handleCellClick}
+        isMyTurn={isMyTurn}
+      />
+    );
+  }
+
+  if (stateUI.isFinished) {
+    return <FinishedPhase />;
+  }
+
+  return <div>Estado desconhecido.</div>;
+}
