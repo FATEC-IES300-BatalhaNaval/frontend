@@ -3,7 +3,9 @@
   padding: 32px;
   box-sizing: border-box;
   color: var(--font-color, #fff);
-  height: 100vh;
+  /* Garante que o container ocupe pelo menos a altura da tela, mas possa crescer */
+  min-height: calc(100vh - 64px); /* 64px é a altura do Header */
+  /* A rolagem agora é controlada pelo body, corrigindo o background */
 }
 
 /* Avatar e header */

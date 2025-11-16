@@ -6,6 +6,7 @@
   color-scheme: light dark;
   color: var(--font-color);
   background-color: var(--primary-color);
+  background-image: var(--background-image, none);
 
   font-synthesis: none;
   text-rendering: optimizeLegibility;
@@ -21,4 +22,13 @@
   box-sizing: border-box;
   padding: 0;
   margin: 0;
+}
+
+body {
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+  /* Adiciona uma transição suave para a troca de background */
+  transition: background-image 0.3s ease-in-out;
 }

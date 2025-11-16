@@ -33,9 +33,6 @@ export default function Perfil() {
   return (
     <div
       className={styles.Container}
-      style={{
-        backgroundImage: backgroundSrc ? `url(${backgroundSrc})` : "",
-      }}
     >
       <div className={styles.Header}>
         <img

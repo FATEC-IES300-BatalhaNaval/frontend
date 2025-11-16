@@ -61,12 +61,14 @@ export default function Play() {
 
   if (stateUI.isLobby) {
     return (
-      <LobbyPhase
-        match={match}
-        meId={mePlayer()?.user_id}
-        submitting={submitting}
-        handleStartMatch={handleStartMatch}
-      />
+      <div style={{ background: "transparent" }}>
+        <LobbyPhase
+          match={match}
+          meId={mePlayer()?.user_id}
+          submitting={submitting}
+          handleStartMatch={handleStartMatch}
+        />
+      </div>
     );
   }
 

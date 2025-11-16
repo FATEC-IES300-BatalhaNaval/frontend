@@ -27,6 +27,28 @@ export default function Header() {
     else setActive(null);
   }, [location]);
 
+  useEffect(() => {
+    const rootStyles = getComputedStyle(document.documentElement);
+    const primaryColor = rootStyles.getPropertyValue("--primary-color").trim();
+
+    const backgroundUrl = config?.enabled_background?.link
+      ? resolveCosmeticUrl(config.enabled_background.link)
+      : null;
+
+    if (backgroundUrl) {
+      document.body.style.backgroundImage = `url(${backgroundUrl})`;
+      document.body.style.backgroundColor = "transparent";
+    } else {
+      document.body.style.backgroundImage = "none";
+      document.body.style.backgroundColor = primaryColor || "#242424";
+    }
+
+    return () => {
+      document.body.style.backgroundColor = primaryColor || "#242424";
+      document.body.style.backgroundImage = "none";
+    };
+  }, [config]);
+
   if (loading) {
     return (
       <nav className={styles.navbar}>
