@@ -7,7 +7,7 @@ import battleMusic from "../../../sound/OST/Battle.mp3";
 
 export default function usePlayLogic(match_id) {
   const { user, setUserAtt } = useAuth();
-  const { getMatch, getShipDefinitions, placeFleet, startMatch, shoot } = useMatch();
+  const { getMatch, getShipDefinitions, placeFleet, startMatch, shoot, skipTurn } = useMatch();
 
   const boardRef = useRef(null);
   const shipsRef = useRef(null);
@@ -99,15 +99,12 @@ export default function usePlayLogic(match_id) {
     }
 
     load();
-  }, [getMatch, getShipDefinitions, match_id]);
+  }, [getMatch, getShipDefinitions, match_id, meId]);
 
-  // Polling otimizado
   useEffect(() => {
     const interval = setInterval(async () => {
       try {
         const updated = await getMatch(match_id);
-
-        // Só atualiza se mudou
         if (JSON.stringify(updated) !== JSON.stringify(match)) {
           setMatch(updated);
 
@@ -116,7 +113,6 @@ export default function usePlayLogic(match_id) {
             shipsRef.current?.setFleetFromBackend(me.player_ship);
           }
         }
-
       } catch (err) {
         console.error("Polling erro:", err);
       }
@@ -154,7 +150,6 @@ export default function usePlayLogic(match_id) {
     }
   }
 
-  // Atualização imediata após tiro
   const handleCellClick = async (x, y) => {
     if (!match?.state || match.state !== "ACTIVE") return;
     if (!isMyTurn()) return;
@@ -162,7 +157,7 @@ export default function usePlayLogic(match_id) {
     try {
       setSubmitting(true);
       const updated = await shoot(match_id, x, y);
-      setMatch(updated); // UI atualiza na hora
+      setMatch(updated);
     } catch (err) {
       console.error("Erro ao atirar:", err);
     } finally {
@@ -205,5 +200,7 @@ export default function usePlayLogic(match_id) {
     handleConfirmPlacement,
     handleStartMatch,
     handleCellClick,
+    skipTurn,
+    getMatch,
   };
 }

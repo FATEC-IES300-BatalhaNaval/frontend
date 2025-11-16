@@ -18,7 +18,8 @@ export default function Play() {
     loading,
     match,
     shipDefs,
-
+    getMatch,
+    
     // refs
     boardRef,
     shipsRef,
@@ -34,7 +35,6 @@ export default function Play() {
 
     // estados
     submitting,
-    shots,
     activeEmoji,
     setActiveEmoji,
     isDeckPopupOpen,
@@ -46,6 +46,7 @@ export default function Play() {
     handleConfirmPlacement,
     handleDeckSave,
     handleCellClick,
+    skipTurn,
   } = usePlayLogic(match_id);
 
   if (loading) {
@@ -101,11 +102,13 @@ export default function Play() {
         shipsRef={shipsRef}
         enemyBoardRef={enemyBoardRef}
         enemyShipsRef={enemyShipsRef}
-        shots={shots}
-        activeEmoji={activeEmoji}
-        setActiveEmoji={setActiveEmoji}
         handleCellClick={handleCellClick}
         isMyTurn={isMyTurn}
+        activeEmoji={activeEmoji}
+        setActiveEmoji={setActiveEmoji}
+        matchId={match_id}
+        skipTurn={skipTurn}
+        getMatch={getMatch}
       />
     );
   }

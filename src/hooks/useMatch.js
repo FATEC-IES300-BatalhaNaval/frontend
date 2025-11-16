@@ -8,7 +8,9 @@ import {
   placeFleet as apiPlaceFleet,
   joinMatch as apiJoinMatch,
   startMatch as apiStartMatch,
-  shoot as apiShoot
+  shoot as apiShoot,
+  getAllMatches as apiGetAllMatches,
+  skipTurn as apiSkipTurn
 } from "../services/matchService";
 
 export function useMatch() {
@@ -16,7 +18,6 @@ export function useMatch() {
   const [shipsDef, setShipsDef] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  // Buscar salas
   const searchMatches = useCallback(async (query = "") => {
     try {
       setLoading(true);
@@ -37,7 +38,27 @@ export function useMatch() {
     }
   }, []);
 
-  // Criar sala
+  const getAllMatches = useCallback(async (filters = {}) => {
+    try {
+      setLoading(true);
+      const res = await apiGetAllMatches(filters);
+
+      const list =
+        Array.isArray(res)
+          ? res
+          : Array.isArray(res?.matches)
+          ? res.matches
+          : Array.isArray(res?.results)
+          ? res.results
+          : [];
+
+      setMatches(list);
+      return list;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   const newMatch = useCallback(async (body) => {
     try {
       setLoading(true);
@@ -47,7 +68,6 @@ export function useMatch() {
     }
   }, []);
 
-  // Buscar partida
   const getMatch = useCallback(async (id) => {
     try {
       setLoading(true);
@@ -57,7 +77,6 @@ export function useMatch() {
     }
   }, []);
 
-  // Buscar definições de navios
   const loadShipDefinitions = useCallback(async () => {
     try {
       setLoading(true);
@@ -72,29 +91,28 @@ export function useMatch() {
     return await apiGetShipDefinitions();
   }, []);
 
-  // Enviar frota
   const sendFleet = useCallback(async (matchId, fleet) => {
     return await apiPlaceFleet(matchId, fleet);
   }, []);
 
-  // Enviar frota (alias)
   const placeFleet = useCallback(async (matchId, fleet) => {
     return await apiPlaceFleet(matchId, fleet);
   }, []);
 
-  // Entrar em partida
   const joinMatch = useCallback(async (matchId) => {
     return await apiJoinMatch(matchId);
   }, []);
 
-  // Iniciar partida
   const startMatch = useCallback(async (matchId) => {
     return await apiStartMatch(matchId);
   }, []);
 
-  // Atirar
   const shoot = useCallback(async (matchId, x, y) => {
     return await apiShoot(matchId, x, y);
+  }, []);
+
+  const skipTurn = useCallback(async (matchId) => {
+    return await apiSkipTurn(matchId);
   }, []);
 
   return {
@@ -103,6 +121,7 @@ export function useMatch() {
     loading,
 
     searchMatches,
+    getAllMatches,
     newMatch,
     getMatch,
 
@@ -114,6 +133,7 @@ export function useMatch() {
     joinMatch,
     startMatch,
 
-    shoot
+    shoot,
+    skipTurn
   };
 }

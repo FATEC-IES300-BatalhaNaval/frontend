@@ -97,6 +97,33 @@ export function shoot(matchId, x, y) {
   });
 }
 
+/* NEW: GET /match/list/all/ */
+export function getAllMatches(filters = {}) {
+  const params = new URLSearchParams();
+
+  if (filters.match_state) {
+    params.append("match_state", filters.match_state);
+  }
+
+  if (filters.user_id) {
+    params.append("user_id", filters.user_id);
+  }
+
+  const queryString = params.toString();
+  const url = `/match/list/all/${queryString ? `?${queryString}` : ""}`;
+
+  return apiFetch(url, { method: "GET" });
+}
+
+/* PATCH /match/{match_id}/skip_turn/ */
+export function skipTurn(matchId) {
+  if (!matchId) throw new Error("skipTurn: matchId required");
+  return apiFetch(`/match/${encodeURIComponent(matchId)}/skip_turn/`, {
+    method: "PATCH"
+  });
+}
+
+
 export default {
   getMatches,
   createMatch,
@@ -105,6 +132,7 @@ export default {
   placeFleet,
   joinMatch,
   startMatch,
-  shoot
+  shoot,
+  getAllMatches,
+  skipTurn,
 };
-
