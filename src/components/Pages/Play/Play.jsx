@@ -116,7 +116,12 @@ export default function Play() {
   }
 
   if (stateUI.isFinished) {
-    return <FinishedPhase />;
+    return (
+      <FinishedPhase
+        match={match}
+        mePlayer={mePlayer}
+      />
+    );
   }
 
   return <div>Estado desconhecido.</div>;
