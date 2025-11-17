@@ -101,8 +101,8 @@ export function useMatch() {
     return await apiPlaceFleet(matchId, fleet);
   }, []);
 
-  const joinMatch = useCallback(async (matchId) => {
-    return await apiJoinMatch(matchId);
+  const joinMatch = useCallback(async (matchId, password = null) => {
+    return await apiJoinMatch(matchId, password);
   }, []);
 
   const startMatch = useCallback(async (matchId) => {

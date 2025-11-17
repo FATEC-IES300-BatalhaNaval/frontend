@@ -72,10 +72,20 @@ export async function placeFleet(matchId, fleet) {
 }
 
 /* PUT /match/join/ */
-export function joinMatch(matchId) {
+export function joinMatch(matchId, password) {
+  if (!matchId) throw new Error("joinMatch: matchId required");
+
+  const body = {
+    match_id: matchId,
+  };
+
+  if (password) {
+    body.password = password;
+  }
+
   return apiFetch("/match/join/", {
     method: "PUT",
-    body: JSON.stringify({ match_id: matchId })
+    body: JSON.stringify(body),
   });
 }
 

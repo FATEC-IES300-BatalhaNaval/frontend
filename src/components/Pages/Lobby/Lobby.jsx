@@ -55,12 +55,24 @@ export default function Lobby() {
     }
   }
 
-  async function enterMatch(match_id) {
+  async function enterMatch(room) {
     try {
-      await joinMatch(match_id);
-      navigate(`/play/${match_id}`);
-    } catch {
-      alert("Erro ao entrar na partida.");
+      if (room.is_private) {
+        const pwd = prompt("Esta sala é privada. Digite a senha:");
+        if (!pwd) return;
+
+        await joinMatch(room.match_id, pwd);
+      } else {
+        await joinMatch(room.match_id);
+      }
+
+      navigate(`/play/${room.match_id}`);
+    } catch (error) {
+      if (error?.status === 403 || error?.status === 401) {
+        alert("Senha incorreta!");
+      } else {
+        alert("Erro ao entrar na partida.");
+      }
     }
   }
 
@@ -141,7 +153,7 @@ export default function Lobby() {
 
                   <button
                     className={styles.joinButton}
-                    onClick={() => enterMatch(room.match_id)}
+                      onClick={() => enterMatch(room)}
                   >
                     Entrar
                   </button>
