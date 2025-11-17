@@ -32,17 +32,17 @@ async function apiFetch(path, options = {}) {
   return res.json().catch(() => null);
 }
 
-/* ✅ sempre via token */
+/* sempre via token */
 export async function getMe() {
   return apiFetch("/users/me/", { method: "GET" });
 }
 
-/* ✅ sempre via token */
+/* sempre via token */
 export async function getUserConfig() {
   return apiFetch("/users/config/", { method: "GET" });
 }
 
-/* ✅ sempre via token */
+/* sempre via token */
 export async function updateUserConfig(data) {
   return apiFetch("/users/config/", {
     method: "PUT",
@@ -56,11 +56,11 @@ export async function getUserCosmetics() {
     method: "GET",
     headers: {
       "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {})
-    }
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
   });
   if (!res.ok) {
-    const text = await res.text().catch(() => '');
+    const text = await res.text().catch(() => "");
     throw new Error(`Erro ao buscar cosméticos do usuário: ${res.status} ${text}`);
   }
   return res.json();
@@ -72,9 +72,9 @@ export async function addCoins(amount) {
     method: "PUT",
     headers: {
       "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {})
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
-    body: JSON.stringify({ amount })
+    body: JSON.stringify({ amount }),
   });
 
   if (!res.ok) {
@@ -85,10 +85,15 @@ export async function addCoins(amount) {
   return res.json();
 }
 
+export async function getUserCards() {
+  return apiFetch("/users/cards/", { method: "GET" });
+}
 
 export default {
   getMe,
   getUserConfig,
   updateUserConfig,
-  addCoins
+  addCoins,
+  getUserCosmetics,
+  getUserCards,
 };

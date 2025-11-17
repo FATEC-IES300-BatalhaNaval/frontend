@@ -9,22 +9,28 @@ import {
 } from "../../../services/storeService";
 
 import { getMe, addCoins } from "../../../services/userService";
+import { purchaseCard } from "../../../services/cardService";
+import useUserCards from "../../../hooks/useUserCards";
 
 export default function Store() {
+  const { cards: userCards, loadingCards, refreshCards } = useUserCards();
+
   const [loading, setLoading] = useState(true);
   const [cosmetics, setCosmetics] = useState([]);
   const [owned, setOwned] = useState(new Set());
+  const [ownedCards, setOwnedCards] = useState(new Set());
   const [coins, setCoins] = useState(0);
   const [tab, setTab] = useState("ICON");
   const [processing, setProcessing] = useState(false);
 
-  const carouselRef = useRef(null); // Ref direta no wrapper do carrossel
+  const carouselRef = useRef(null);
 
   const tabsMap = {
     ICON: "Ícones",
     EFFECT: "Efeitos",
     BACKGROUND: "Backgrounds",
-    SKIN: "Skins"
+    SKIN: "Skins",
+    CARD: "Cartas"
   };
 
   function resolveUrl(link) {
@@ -51,22 +57,15 @@ export default function Store() {
         alert("Erro ao carregar a loja. Tente novamente.");
       } finally {
         setLoading(false);
+        setOwnedCards(new Set(userCards.map(c => c.card_id)));
       }
     }
     load();
-  }, []);
+  }, [userCards]);
 
-  if (loading) {
-    return (
-      <div className={styles.container} style={{ minHeight: "60vh", justifyContent: "center" }}>
-        <p>Carregando Loja...</p>
-      </div>
-    );
-  }
+  const filteredCosmetics = cosmetics.filter(c => c.type === tab);
 
-  const filtered = cosmetics.filter(c => c.type === tab);
-
-  const handleBuy = async (c) => {
+  const handleBuyCosmetic = async (c) => {
     if (processing || owned.has(c.cosmetic_id)) return;
     if (coins < c.price) {
       alert("Você não possui Fatec Coins suficientes.");
@@ -76,17 +75,32 @@ export default function Store() {
     try {
       setProcessing(true);
       await purchaseCosmetic(c.cosmetic_id);
-      alert(`Você comprou: ${c.description}`);
       setOwned(prev => new Set(prev).add(c.cosmetic_id));
       setCoins(prev => prev - c.price);
-    } catch (err) {
-      const msg = err.message?.toLowerCase() || "";
-      if (msg.includes("already") || msg.includes("409") || err.status === 409) {
-        setOwned(prev => new Set(prev).add(c.cosmetic_id));
-        alert("Você já possui este cosmético.");
-      } else {
-        alert("Erro ao comprar o item. Tente novamente.");
-      }
+      alert(`Você comprou: ${c.description}`);
+    } catch {
+      alert("Erro ao comprar o item. Tente novamente.");
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const handleBuyCard = async (card) => {
+    if (processing || ownedCards.has(card.card_id)) return;
+    if (coins < card.price) {
+      alert("Você não possui Fatec Coins suficientes.");
+      return;
+    }
+
+    try {
+      setProcessing(true);
+      await purchaseCard(card.card_id);
+      setOwnedCards(prev => new Set(prev).add(card.card_id));
+      setCoins(prev => prev - card.price);
+      refreshCards();
+      alert(`Você adquiriu a carta: ${card.card_name}`);
+    } catch {
+      alert("Erro ao comprar a carta.");
     } finally {
       setProcessing(false);
     }
@@ -98,37 +112,28 @@ export default function Store() {
     { id: 3, amount: 3000, price: "R$ 19,90" }
   ];
 
-  const handleBuyCoins = async (amount) => {
-    if (processing) return;
-    try {
-      setProcessing(true);
-      const res = await addCoins(amount);
-      setCoins(res.coins);
-      alert(`Você recebeu ${amount} Fatec Coins.`);
-    } catch {
-      alert("Erro ao comprar moedas.");
-    } finally {
-      setProcessing(false);
+  const scrollByAmount = (delta) => {
+    if (carouselRef.current) {
+      carouselRef.current.scrollBy({ left: delta, behavior: "smooth" });
     }
   };
 
-  const scrollByAmount = (delta) => {
-    if (carouselRef.current) {
-      carouselRef.current.scrollBy({
-        left: delta,
-        behavior: "smooth"
-      });
-    }
-  };
+  if (loading || loadingCards) {
+    return (
+      <div className={styles.container} style={{ minHeight: "60vh", justifyContent: "center" }}>
+        <p>Carregando Loja...</p>
+      </div>
+    );
+  }
+
+  const isCardsTab = tab === "CARD";
 
   return (
     <div className={styles.container}>
-      {/* Saldo */}
       <div className={styles.FC_Container}>
         ⚓ Fatec Coins: <span style={{ color: "var(--tertiary-color)" }}>{coins}</span>
       </div>
 
-      {/* Comprar Moedas */}
       <div className={styles.CoinPacks}>
         <div className={styles.PackList}>
           {coinPacks.map(p => (
@@ -136,17 +141,16 @@ export default function Store() {
               <h3>{p.amount} FC</h3>
               <p>{p.price}</p>
               <button
-                onClick={() => handleBuyCoins(p.amount)}
+                onClick={() => addCoins(p.amount).then(r => setCoins(r.coins))}
                 disabled={processing}
               >
-                {processing ? "⋯" : "Comprar"}
+                Comprar
               </button>
             </div>
           ))}
         </div>
       </div>
 
-      {/* Tabs */}
       <div className={styles.Nav_Buttons_Container}>
         <ul>
           {Object.entries(tabsMap).map(([key, label]) => (
@@ -161,29 +165,40 @@ export default function Store() {
         </ul>
       </div>
 
-      {/* Carrossel */}
       <div className={styles.Carousel_Container}>
         <button
           className={`${styles.Carousel_Button} ${styles.prev}`}
           onClick={() => scrollByAmount(-240)}
-          aria-label="Anterior"
           disabled={processing}
         >
           ‹
         </button>
 
         <div ref={carouselRef} className={styles.Carousel_Wrapper}>
-          {filtered.length === 0 ? (
-            <div style={{
-              padding: "30px 20px",
-              color: "#aaa",
-              textAlign: "center",
-              minWidth: "100%"
-            }}>
-              Nenhum item disponível nesta categoria.
-            </div>
-          ) : (
-            filtered.map(c => {
+          {/* Cards Tab */}
+          {isCardsTab &&
+            userCards.map(card => {
+              const isOwned = ownedCards.has(card.card_id);
+              return (
+                <div
+                  key={card.card_id}
+                  className={`${styles.Card_Wrapper} ${isOwned ? styles.ownedCard : ""}`}
+                >
+                  {isOwned && <div className={styles.ownedTag}>Adquirido</div>}
+                  <Card
+                    titulo={card.card_name}
+                    preco={card.price}
+                    imagem={resolveUrl(card.link)}
+                    onComprar={() => handleBuyCard(card)}
+                  />
+                </div>
+              );
+            })
+          }
+
+          {/* Cosmetics Tabs */}
+          {!isCardsTab &&
+            filteredCosmetics.map(c => {
               const isOwned = owned.has(c.cosmetic_id);
               return (
                 <div
@@ -195,22 +210,17 @@ export default function Store() {
                     titulo={c.description}
                     preco={c.price}
                     imagem={resolveUrl(c.link)}
-                    onComprar={() => handleBuy(c)}
-                    onImgError={e => {
-                      e.target.onerror = null;
-                      e.target.src = "/placeholder.png";
-                    }}
+                    onComprar={() => handleBuyCosmetic(c)}
                   />
                 </div>
               );
             })
-          )}
+          }
         </div>
 
         <button
           className={`${styles.Carousel_Button} ${styles.next}`}
           onClick={() => scrollByAmount(240)}
-          aria-label="Próximo"
           disabled={processing}
         >
           ›
