@@ -115,6 +115,42 @@ export function useMatch() {
     return await apiSkipTurn(matchId);
   }, []);
 
+    // ---------------- STATISTICS HELPERS ----------------
+
+  const getUserMatches = useCallback(async (userId) => {
+    const list = await getAllMatches({ user_id: userId });
+
+    // Garante array
+    return Array.isArray(list) ? list : [];
+  }, [getAllMatches]);
+
+  const calculateStats = useCallback((matches, userId) => {
+    if (!Array.isArray(matches)) return { played: 0, wins: 0, losses: 0 };
+
+    const finished = matches.filter(m => m.state === "FINISHED");
+
+    const wins = finished.filter(m => m.winner_user_id === userId).length;
+    const played = finished.length;
+    const losses = Math.max(0, played - wins);
+
+    return { played, wins, losses };
+  }, []);
+
+  const calculateXP = useCallback((wins, losses) => {
+    const winXP = 100;
+    const loseXP = 25;
+
+    const totalXP = (wins * winXP) + (losses * loseXP);
+
+    // Level simples: 100 XP por nível
+    const level = Math.floor(totalXP / 100);
+    const xpCurrentLevel = totalXP % 100;
+    const xpNeeded = 100;
+
+    return { level, xpCurrentLevel, xpNeeded, totalXP };
+  }, []);
+
+
   return {
     matches,
     shipsDef,
@@ -134,6 +170,10 @@ export function useMatch() {
     startMatch,
 
     shoot,
-    skipTurn
+    skipTurn,
+    
+    getUserMatches,
+    calculateStats,
+    calculateXP,
   };
 }
