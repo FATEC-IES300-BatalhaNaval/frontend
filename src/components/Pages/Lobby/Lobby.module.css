@@ -94,30 +94,41 @@
   color: #fff;
 }
 
-/* NOVO GRID */
-.myMatchesSection {
+/* NOVO: grid de quadradinhos */
+.myMatchesGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
   gap: 12px;
 }
 
 .myMatchCard {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: flex-start;
+
+  padding: 12px 14px;
+
   background: rgba(255, 255, 255, 0.08);
   border-radius: 8px;
   border: 1px solid rgba(255, 255, 255, 0.1);
-  padding: 14px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
+
   color: #fff;
+  /* remove o margin-bottom, o espaçamento agora é pelo gap do grid */
 }
 
 .myMatchCard strong {
-  font-size: 18px;
+  font-size: 16px;
+  margin-bottom: 4px;
+}
+
+.matchState {
+  font-size: 0.85rem;
+  opacity: 0.85;
+  margin-bottom: 8px;
 }
 
 .myMatchCard button {
-  align-self: flex-end;
   padding: 6px 14px;
   background-color: #036d9e;
   border: none;
@@ -131,6 +142,7 @@
 .myMatchCard button:hover {
   opacity: 0.85;
 }
+
 
 /* ========================================================================== */
 /*  LISTA DE SALAS                                                            */

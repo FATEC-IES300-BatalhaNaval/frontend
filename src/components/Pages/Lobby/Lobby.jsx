@@ -10,19 +10,24 @@ export default function Lobby() {
   const { user } = useAuth();
 
   const [filter, setFilter] = useState("all");
+
+  // Create room modal
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [roomName, setRoomName] = useState("");
   const [isPrivate, setIsPrivate] = useState(false);
   const [password, setPassword] = useState("");
 
+  // Password join modal
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [selectedRoom, setSelectedRoom] = useState(null);
+  const [joinPassword, setJoinPassword] = useState("");
+
   const meId = user?.data?.user_id || user?.user_id;
 
-  // Load matches on open
   useEffect(() => {
     getAllMatches();
   }, [getAllMatches]);
 
-  // My active matches
   const myMatches = useMemo(() => {
     return matches.filter(
       (m) =>
@@ -31,7 +36,6 @@ export default function Lobby() {
     );
   }, [matches, meId]);
 
-  // Public/Private filter
   const filtered = useMemo(() => {
     return matches.filter((room) => {
       if (filter === "public") return !room.is_private;
@@ -50,23 +54,24 @@ export default function Lobby() {
     });
 
     if (res?.match_id) {
-      // await joinMatch(res.match_id); (Já entra automaticamente ao criar)
       navigate(`/play/${res.match_id}`);
     }
   }
 
-  async function enterMatch(room) {
+  function enterMatch(room) {
+    if (room.is_private) {
+      setSelectedRoom(room);
+      setJoinPassword("");
+      setShowPasswordModal(true);
+    } else {
+      handleJoinMatch(room.match_id);
+    }
+  }
+
+  async function handleJoinMatch(match_id, pwd = "") {
     try {
-      if (room.is_private) {
-        const pwd = prompt("Esta sala é privada. Digite a senha:");
-        if (!pwd) return;
-
-        await joinMatch(room.match_id, pwd);
-      } else {
-        await joinMatch(room.match_id);
-      }
-
-      navigate(`/play/${room.match_id}`);
+      await joinMatch(match_id, pwd);
+      navigate(`/play/${match_id}`);
     } catch (error) {
       if (error?.status === 403 || error?.status === 401) {
         alert("Senha incorreta!");
@@ -74,6 +79,13 @@ export default function Lobby() {
         alert("Erro ao entrar na partida.");
       }
     }
+  }
+
+  async function confirmPasswordJoin(e) {
+    e.preventDefault();
+    if (!selectedRoom) return;
+    await handleJoinMatch(selectedRoom.match_id, joinPassword);
+    setShowPasswordModal(false);
   }
 
   return (
@@ -85,21 +97,21 @@ export default function Lobby() {
           <div className={styles.myMatchesSection}>
             <h2>Suas partidas</h2>
 
-            {myMatches.map((m) => (
-              <div key={m.match_id} className={styles.myMatchCard}>
-                <div>
+            <div className={styles.myMatchesGrid}>
+              {myMatches.map((m) => (
+                <div key={m.match_id} className={styles.myMatchCard}>
                   <strong>{m.room_name}</strong>
-                  <div>Estado: {m.state}</div>
-                </div>
+                  <span className={styles.matchState}>{m.state}</span>
 
-                <button
-                  className={styles.joinButton}
-                  onClick={() => navigate(`/play/${m.match_id}`)}
-                >
-                  Re-entrar
-                </button>
-              </div>
-            ))}
+                  <button
+                    className={styles.joinButton}
+                    onClick={() => navigate(`/play/${m.match_id}`)}
+                  >
+                    Re-entrar
+                  </button>
+                </div>
+              ))}
+            </div>
           </div>
         )}
 
@@ -125,7 +137,6 @@ export default function Lobby() {
           </button>
         </div>
 
-        {/* Matches List */}
         <div className={styles.roomList}>
           {loading && <p>Carregando...</p>}
 
@@ -153,7 +164,7 @@ export default function Lobby() {
 
                   <button
                     className={styles.joinButton}
-                      onClick={() => enterMatch(room)}
+                    onClick={() => enterMatch(room)}
                   >
                     Entrar
                   </button>
@@ -224,6 +235,47 @@ export default function Lobby() {
           </div>
         </div>
       )}
+
+      {/* Password Join Modal */}
+      {showPasswordModal && (
+        <div className={styles.modalOverlay}>
+          <div className={styles.modalContent}>
+            <button
+              className={styles.closeButton}
+              onClick={() => setShowPasswordModal(false)}
+            >
+              X
+            </button>
+
+            <h2>Entrar na Sala Privada</h2>
+
+            <form onSubmit={confirmPasswordJoin} className={styles.modalForm}>
+              <input
+                type="password"
+                placeholder="Senha da sala"
+                value={joinPassword}
+                onChange={(e) => setJoinPassword(e.target.value)}
+                required
+              />
+
+              <div className={styles.modalActions}>
+                <button
+                  type="button"
+                  className={styles.cancelButton}
+                  onClick={() => setShowPasswordModal(false)}
+                >
+                  Cancelar
+                </button>
+
+                <button type="submit" className={styles.confirmButton}>
+                  Entrar
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
