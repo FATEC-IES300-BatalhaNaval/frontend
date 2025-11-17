@@ -6,7 +6,14 @@ import styles from "./Lobby.module.css";
 
 export default function Lobby() {
   const navigate = useNavigate();
-  const { matches, loading, getAllMatches, newMatch, joinMatch } = useMatch();
+  const {
+    matches,
+    loading,
+    getAllMatches,
+    silentlyRefreshMatches,
+    newMatch,
+    joinMatch
+  } = useMatch();
   const { user } = useAuth();
 
   const [filter, setFilter] = useState("all");
@@ -25,8 +32,14 @@ export default function Lobby() {
   const meId = user?.data?.user_id || user?.user_id;
 
   useEffect(() => {
-    getAllMatches();
-  }, [getAllMatches]);
+    getAllMatches(); // primeira carga exibe "Carregando"
+
+    const interval = setInterval(() => {
+      silentlyRefreshMatches(); // atualiza sem loading
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, [getAllMatches, silentlyRefreshMatches]);
 
   const myMatches = useMemo(() => {
     return matches.filter(

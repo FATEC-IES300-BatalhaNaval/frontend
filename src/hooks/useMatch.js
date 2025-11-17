@@ -157,6 +157,25 @@ export function useMatch() {
     return { level, xpCurrentLevel, xpNeeded, totalXP };
   }, []);
 
+  const silentlyRefreshMatches = useCallback(async () => {
+    try {
+      const res = await apiGetAllMatches();
+
+      const list =
+        Array.isArray(res)
+          ? res
+          : Array.isArray(res?.matches)
+          ? res.matches
+          : Array.isArray(res?.results)
+          ? res.results
+          : [];
+
+      setMatches(list);
+    } catch (err) {
+      console.error("Erro ao atualizar salas:", err);
+    }
+  }, []);
+
   return {
     matches,
     shipsDef,
@@ -184,5 +203,7 @@ export function useMatch() {
     getUserMatches,
     calculateStats,
     calculateXP,
+
+    silentlyRefreshMatches,
   };
 }
