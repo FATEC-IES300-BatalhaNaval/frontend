@@ -88,12 +88,23 @@ export default function Lobby() {
       setJoinPassword("");
       setShowPasswordModal(true);
     } else {
-      handleJoinMatch(room.match_id);
+      handleJoinMatch(room);
     }
   }
 
-  async function handleJoinMatch(match_id, pwd = "") {
+  async function handleJoinMatch(room, pwd = "") {
+    const match_id = room.match_id;
+    const isPlayerAlreadyInside =
+      room.player?.some(p => p.user_id === meId);
+
     try {
+      // Se já está na partida → apenas redireciona
+      if (isPlayerAlreadyInside) {
+        navigate(`/play/${match_id}`);
+        return;
+      }
+
+      // Caso contrário, tenta entrar
       await joinMatch(match_id, pwd);
       navigate(`/play/${match_id}`);
     } catch (error) {
@@ -108,7 +119,7 @@ export default function Lobby() {
   async function confirmPasswordJoin(e) {
     e.preventDefault();
     if (!selectedRoom) return;
-    await handleJoinMatch(selectedRoom.match_id, joinPassword);
+    await handleJoinMatch(selectedRoom, joinPassword);
     setShowPasswordModal(false);
   }
 

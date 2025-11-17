@@ -13,6 +13,7 @@ import FinishedPhase from "./phases/FinishedPhase";
 
 export default function Play() {
   const { match_id } = useParams();
+  
 
   const {
     // estado geral
