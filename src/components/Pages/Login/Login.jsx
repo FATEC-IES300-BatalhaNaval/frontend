@@ -147,14 +147,16 @@ function LoginForm() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
           />
-
-          <button
-            type="button"
-            className={styles.text_link_stacked_link}
-            onClick={() => setActualTab("forgot_password")}
-          >
-            Esqueceu a senha?
-          </button>
+          { /*
+            <button
+              type="button"
+              className={styles.text_link_stacked_link}
+              onClick={() => setActualTab("forgot_password")}
+            >
+              Esqueceu a senha?
+            </button>
+            */
+          }
           <button
             type="button"
             className={styles.text_link_stacked_link}
