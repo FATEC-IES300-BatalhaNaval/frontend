@@ -50,6 +50,9 @@ export default function Play() {
     skipTurn,
     pickCards,
     ownedCards,
+    // cartão ativo
+    activeCard,
+    setActiveCard
   } = usePlayLogic(match_id);
 
   if (loading) {
@@ -125,6 +128,8 @@ export default function Play() {
         matchId={match_id}
         skipTurn={skipTurn}
         getMatch={getMatch}
+        activeCard={activeCard}
+        setActiveCard={setActiveCard}
       />
     );
   }

@@ -25,6 +25,8 @@ export default function BattlePhase({
   matchId,
   skipTurn,
   getMatch,
+  activeCard,
+  setActiveCard
 }) {
   const itIsMyTurn = isMyTurn();
 
@@ -113,8 +115,12 @@ export default function BattlePhase({
 
         <EmojiBox onEmojiSelect={setActiveEmoji} />
 
-        <Deck cards={mePlayer()?.deck || []} />
-        
+        <Deck
+          cards={mePlayer()?.deck || []}
+          activeCard={activeCard}
+          setActiveCard={setActiveCard}
+        />
+
       </div>
 
       <Placar

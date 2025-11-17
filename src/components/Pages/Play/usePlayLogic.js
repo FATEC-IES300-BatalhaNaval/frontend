@@ -15,13 +15,15 @@ export default function usePlayLogic(match_id) {
     startMatch,
     shoot,
     skipTurn,
-    pickCards, // <-- IMPORTADO DO useMatch
+    pickCards,
+    playCard,
   } = useMatch();
 
   const boardRef = useRef(null);
   const shipsRef = useRef(null);
   const enemyBoardRef = useRef(null);
   const enemyShipsRef = useRef(null);
+  const [activeCard, setActiveCard] = useState(null);
 
   const introRef = useRef(null);
   const battleRef = useRef(null);
@@ -164,15 +166,24 @@ export default function usePlayLogic(match_id) {
   };
 
   const handleCellClick = async (x, y) => {
-    if (!match?.state || match.state !== "ACTIVE") return;
+  if (!match?.state || match.state !== "ACTIVE") return;
     if (!isMyTurn()) return;
 
     try {
       setSubmitting(true);
+
+      if (activeCard) {
+        const updated = await playCard(match_id, activeCard.card_id, x, y);
+        setMatch(updated);
+        setActiveCard(null); // reseta carta após o uso
+        return;
+      }
+
       const updated = await shoot(match_id, x, y);
       setMatch(updated);
+
     } catch (err) {
-      console.error("Erro ao atirar:", err);
+      console.error("Erro ao atirar/jogar carta:", err);
     } finally {
       setSubmitting(false);
     }
@@ -218,6 +229,9 @@ export default function usePlayLogic(match_id) {
     getMatch,
     pickCards,
     ownedCards,
+
+    activeCard,
+    setActiveCard
 
   };
 }
