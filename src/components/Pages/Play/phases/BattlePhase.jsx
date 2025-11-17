@@ -40,7 +40,11 @@ export default function BattlePhase({
 
   return (
     <div className={styles.playContainer}>
-      <Placar titulo="Seu Placar" ships={mePlayer()?.player_ship || []} />
+      <Placar
+        titulo="Seu Placar"
+        ships={mePlayer()?.player_ship || []}
+        shipDefs={shipDefs}
+      />
 
       <div className={styles.mainGameArea}>
         <div className={styles.gameStatusContainer}>
@@ -110,7 +114,11 @@ export default function BattlePhase({
         <Deck />
       </div>
 
-      <Placar titulo="Placar Inimigo" ships={enemyPlayer()?.player_ship || []} />
+      <Placar
+        titulo="Placar Inimigo"
+        ships={enemyPlayer()?.player_ship || []}
+        shipDefs={shipDefs}
+      />    
     </div>
   );
 }
