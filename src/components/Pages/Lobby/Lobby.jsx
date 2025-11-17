@@ -23,6 +23,7 @@ export default function Lobby() {
   const [roomName, setRoomName] = useState("");
   const [isPrivate, setIsPrivate] = useState(false);
   const [password, setPassword] = useState("");
+  const [creating, setCreating] = useState(false);
 
   // Password join modal
   const [showPasswordModal, setShowPasswordModal] = useState(false);
@@ -59,15 +60,25 @@ export default function Lobby() {
 
   async function handleCreate(e) {
     e.preventDefault();
+    if (creating) return;
 
-    const res = await newMatch({
-      room_name: roomName,
-      is_private: isPrivate,
-      password: isPrivate ? password : "",
-    });
+    try {
+      setCreating(true);
 
-    if (res?.match_id) {
-      navigate(`/play/${res.match_id}`);
+      const res = await newMatch({
+        room_name: roomName,
+        is_private: isPrivate,
+        password: isPrivate ? password : "",
+      });
+
+      if (res?.match_id) {
+        setShowCreateModal(false); // fecha modal imediatamente
+        navigate(`/play/${res.match_id}`);
+      }
+    } catch (err) {
+      alert("Erro ao criar sala: " + err.message);
+    } finally {
+      setCreating(false);
     }
   }
 
@@ -240,8 +251,12 @@ export default function Lobby() {
                   Cancelar
                 </button>
 
-                <button type="submit" className={styles.confirmButton}>
-                  Criar
+                <button
+                  type="submit"
+                  className={styles.confirmButton}
+                  disabled={creating}
+                >
+                  {creating ? "Criando..." : "Criar"}
                 </button>
               </div>
             </form>
