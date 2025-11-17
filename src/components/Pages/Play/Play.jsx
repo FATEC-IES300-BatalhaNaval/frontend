@@ -5,6 +5,7 @@ import usePlayLogic from "./usePlayLogic";
 
 // Fases
 import LobbyPhase from "./phases/LobbyPhase";
+import CardPickingPhase from "./phases/CardPickingPhase";
 import PlacementPhase from "./phases/PlacementPhase";
 import WaitingPlacementPhase from "./phases/WaitingPlacementPhase";
 import BattlePhase from "./phases/BattlePhase";
@@ -47,6 +48,8 @@ export default function Play() {
     handleDeckSave,
     handleCellClick,
     skipTurn,
+    pickCards,
+    ownedCards,
   } = usePlayLogic(match_id);
 
   if (loading) {
@@ -93,6 +96,17 @@ export default function Play() {
       return <WaitingPlacementPhase />;
     }
   }
+
+  if (stateUI.isCardPicking) {
+  return (
+    <CardPickingPhase
+      ownedCards={ownedCards}
+      pickCards={pickCards}
+      matchId={match_id}
+    />
+  );
+}
+
 
   if (stateUI.isActive) {
     return (

@@ -10,7 +10,9 @@ import {
   startMatch as apiStartMatch,
   shoot as apiShoot,
   getAllMatches as apiGetAllMatches,
-  skipTurn as apiSkipTurn
+  skipTurn as apiSkipTurn,
+  pickCards as apiPickCards,
+  playCard as apiPlayCard,
 } from "../services/matchService";
 
 export function useMatch() {
@@ -115,17 +117,24 @@ export function useMatch() {
     return await apiSkipTurn(matchId);
   }, []);
 
-    // ---------------- STATISTICS HELPERS ----------------
+  const pickCards = useCallback(async (matchId, cardIds) => {
+    return await apiPickCards(matchId, cardIds);
+  }, []);
+
+  const playCard = useCallback(async (matchId, cardId, x, y) => {
+    return await apiPlayCard(matchId, cardId, x, y);
+  }, []);
+
+  // ---------------- STATISTICS HELPERS ----------------
 
   const getUserMatches = useCallback(async (userId) => {
     const list = await getAllMatches({ user_id: userId });
-
-    // Garante array
     return Array.isArray(list) ? list : [];
   }, [getAllMatches]);
 
   const calculateStats = useCallback((matches, userId) => {
-    if (!Array.isArray(matches)) return { played: 0, wins: 0, losses: 0 };
+    if (!Array.isArray(matches))
+      return { played: 0, wins: 0, losses: 0 };
 
     const finished = matches.filter(m => m.state === "FINISHED");
 
@@ -141,15 +150,12 @@ export function useMatch() {
     const loseXP = 25;
 
     const totalXP = (wins * winXP) + (losses * loseXP);
-
-    // Level simples: 100 XP por nível
     const level = Math.floor(totalXP / 100);
     const xpCurrentLevel = totalXP % 100;
     const xpNeeded = 100;
 
     return { level, xpCurrentLevel, xpNeeded, totalXP };
   }, []);
-
 
   return {
     matches,
@@ -171,7 +177,10 @@ export function useMatch() {
 
     shoot,
     skipTurn,
-    
+
+    pickCards,
+    playCard,
+
     getUserMatches,
     calculateStats,
     calculateXP,

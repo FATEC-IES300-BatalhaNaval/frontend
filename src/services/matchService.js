@@ -123,6 +123,31 @@ export function skipTurn(matchId) {
   });
 }
 
+/* POST /match/{match_id}/pick_cards/ */
+export function pickCards(matchId, cardIds = []) {
+  if (!matchId) throw new Error("pickCards: matchId required");
+  return apiFetch(`/match/${encodeURIComponent(matchId)}/pick_cards/`, {
+    method: "POST",
+    body: JSON.stringify({
+      card_ids: cardIds
+    })
+  });
+}
+
+/* POST /match/{match_id}/play_card/ */
+export function playCard(matchId, cardId, x, y) {
+  if (!matchId) throw new Error("playCard: matchId required");
+  if (!cardId) throw new Error("playCard: cardId required");
+
+  return apiFetch(`/match/${encodeURIComponent(matchId)}/play_card/`, {
+    method: "POST",
+    body: JSON.stringify({
+      card_id: cardId,
+      coord_x: x ?? null,
+      coord_y: y ?? null
+    })
+  });
+}
 
 export default {
   getMatches,
@@ -135,4 +160,6 @@ export default {
   shoot,
   getAllMatches,
   skipTurn,
+  pickCards,
+  playCard,
 };

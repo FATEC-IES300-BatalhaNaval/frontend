@@ -4,10 +4,19 @@ import { useMatch } from "../../../hooks/useMatch";
 
 import introMusic from "../../../sound/OST/Intro.mp3";
 import battleMusic from "../../../sound/OST/Battle.mp3";
+import { getUserCards } from "../../../services/userService";
 
 export default function usePlayLogic(match_id) {
   const { user, setUserAtt } = useAuth();
-  const { getMatch, getShipDefinitions, placeFleet, startMatch, shoot, skipTurn } = useMatch();
+  const {
+    getMatch,
+    getShipDefinitions,
+    placeFleet,
+    startMatch,
+    shoot,
+    skipTurn,
+    pickCards, // <-- IMPORTADO DO useMatch
+  } = useMatch();
 
   const boardRef = useRef(null);
   const shipsRef = useRef(null);
@@ -32,6 +41,8 @@ export default function usePlayLogic(match_id) {
   const playerHasPlaced = () => (mePlayer()?.player_ship?.length || 0) > 0;
   const enemyHasPlaced = () => (enemyPlayer()?.player_ship?.length || 0) > 0;
   const isMyTurn = () => match?.current_user_id === meId;
+
+  const [ownedCards, setOwnedCards] = useState([]);
 
   const shots = useMemo(() => {
     const enemyGrid = enemyPlayer()?.grid_cell || [];
@@ -78,9 +89,10 @@ export default function usePlayLogic(match_id) {
     async function load() {
       try {
         setLoading(true);
-        const [defs, matchData] = await Promise.all([
+        const [defs, matchData, cardsData] = await Promise.all([
           getShipDefinitions(),
           getMatch(match_id),
+          getUserCards(),
         ]);
 
         setShipDefs(Array.isArray(defs) ? defs : []);
@@ -91,6 +103,7 @@ export default function usePlayLogic(match_id) {
           shipsRef.current?.setFleetFromBackend(me.player_ship);
         }
 
+        setOwnedCards(cardsData?.cards || []);
       } catch (err) {
         console.error("Erro ao carregar partida:", err);
       } finally {
@@ -125,7 +138,7 @@ export default function usePlayLogic(match_id) {
     setUserAtt?.(p => !p);
   }, [setUserAtt]);
 
-  async function handleConfirmPlacement() {
+  const handleConfirmPlacement = async () => {
     if (playerHasPlaced()) return;
 
     try {
@@ -137,9 +150,9 @@ export default function usePlayLogic(match_id) {
     } finally {
       setSubmitting(false);
     }
-  }
+  };
 
-  async function handleStartMatch() {
+  const handleStartMatch = async () => {
     try {
       setSubmitting(true);
       await startMatch(match_id);
@@ -148,7 +161,7 @@ export default function usePlayLogic(match_id) {
     } finally {
       setSubmitting(false);
     }
-  }
+  };
 
   const handleCellClick = async (x, y) => {
     if (!match?.state || match.state !== "ACTIVE") return;
@@ -168,6 +181,7 @@ export default function usePlayLogic(match_id) {
   const stateUI = {
     isLobby: match?.state === "LOBBY",
     isPlacement: match?.state === "SHIP_PLACEMENT",
+    isCardPicking: match?.state === "CARD_PICKING",
     isActive: match?.state === "ACTIVE",
     isFinished: match?.state === "FINISHED",
   };
@@ -202,5 +216,8 @@ export default function usePlayLogic(match_id) {
     handleCellClick,
     skipTurn,
     getMatch,
+    pickCards,
+    ownedCards,
+
   };
 }

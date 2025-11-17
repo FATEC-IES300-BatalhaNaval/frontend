@@ -1,34 +1,32 @@
 import React from "react";
 import styles from "./Deck.module.css";
 import Card from "../Cards/Card";
-import C00001 from "../../assets/cosmetic/cards/C00001.png";
-import C00002 from "../../assets/cosmetic/cards/C00002.png";
-import C00003 from "../../assets/cosmetic/cards/C00003.png";
-import C00004 from "../../assets/cosmetic/cards/C00004.png";
-import C00005 from "../../assets/cosmetic/cards/C00005.png";
 
-const Deck = ({ cards = [] }) => {
-  // Dados de exemplo para visualização
-  const exampleCards = [
-    { id: "c1", image: C00001, title: "Teleguiado" },
-    { id: "c2", image: C00002, title: "Hit-Kill" },
-    { id: "c3", image: C00003, title: "Massivo" },
-  ];
+export default function Deck({ cards = [] }) {
+  
+  function resolveImage(link) {
+    if (!link) return "/placeholder.png";
+    return link.startsWith("/") ? link : `/${link}`;
+  }
 
-  const cardsToDisplay = cards.length > 0 ? cards : exampleCards;
+  const availableCards = cards.filter(c => !c.is_used);
 
   return (
     <div className={styles.deckContainer}>
-      {Array.from({ length:3 }).map((_, index) => {
-        const card = cardsToDisplay[index];
+      {Array.from({ length: 3 }).map((_, index) => {
+        const card = availableCards[index];
         return (
           <div key={index} className={styles.cardSlot}>
-            {card && <Card image={card.image} title={card.title} />}
+            {card && (
+              <Card
+                image={resolveImage(card.card.link)}
+                title={card.card.card_name}
+                description={card.card.description}
+              />
+            )}
           </div>
         );
       })}
     </div>
   );
-};
-
-export default Deck;
+}

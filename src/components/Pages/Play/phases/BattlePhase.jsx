@@ -110,8 +110,11 @@ export default function BattlePhase({
           emoji={activeEmoji}
           onAnimationEnd={() => setActiveEmoji(null)}
         />
+
         <EmojiBox onEmojiSelect={setActiveEmoji} />
-        <Deck />
+
+        <Deck cards={mePlayer()?.deck || []} />
+        
       </div>
 
       <Placar
