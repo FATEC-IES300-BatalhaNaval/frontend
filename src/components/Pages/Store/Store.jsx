@@ -9,10 +9,12 @@ import {
 } from "../../../services/storeService";
 
 import { getMe, addCoins } from "../../../services/userService";
-import { purchaseCard } from "../../../services/cardService";
 import useUserCards from "../../../hooks/useUserCards";
+import { getAllCards, purchaseCard } from "../../../services/cardService";
 
 export default function Store() {
+  const [allCards, setAllCards] = useState([]);
+
   const { cards: userCards, loadingCards, refreshCards } = useUserCards();
 
   const [loading, setLoading] = useState(true);
@@ -53,16 +55,23 @@ export default function Store() {
   useEffect(() => {
     async function load() {
       try {
-        const [storeRes, userCosRes, meRes] = await Promise.all([
+        const [storeRes, userCosRes, meRes, allCardsRes] = await Promise.all([
           getCosmetics(),
           getUserCosmetics(),
-          getMe()
+          getMe(),
+          getAllCards()
         ]);
 
         setCosmetics(storeRes.cosmetics || []);
+
         setOwned(new Set(userCosRes.cosmetics?.map(c => c.cosmetic_id) || []));
+
         setCoins(meRes.coins ?? 0);
-        setOwnedCards(new Set(userCards.map(c => c.card_id)));
+
+        setAllCards(allCardsRes.cards || []); // <-- todas as cartas disponíveis
+
+        setOwnedCards(new Set(userCards.map(c => c.card_id))); // <-- cartas do usuário
+
       } catch (err) {
         console.error("[STORE] Erro ao carregar:", err);
         alert("Erro ao carregar a loja. Tente novamente.");
@@ -70,6 +79,7 @@ export default function Store() {
         setLoading(false);
       }
     }
+
     load();
   }, [userCards]);
 
@@ -226,7 +236,7 @@ export default function Store() {
         <div ref={carouselRef} className={styles.Carousel_Wrapper}>
           {/* Aba de Cartas */}
           {isCardsTab &&
-            userCards.map(card => {
+            allCards.map(card => {
               const isOwned = ownedCards.has(card.card_id);
               return (
                 <div
