@@ -23,6 +23,7 @@ export default function usePlayLogic(match_id) {
   const shipsRef = useRef(null);
   const enemyBoardRef = useRef(null);
   const enemyShipsRef = useRef(null);
+
   const [activeCard, setActiveCard] = useState(null);
 
   const introRef = useRef(null);
@@ -55,6 +56,7 @@ export default function usePlayLogic(match_id) {
     }));
   }, [enemyPlayer]);
 
+  // Música
   useEffect(() => {
     introRef.current = new Audio(introMusic);
     battleRef.current = new Audio(battleMusic);
@@ -87,6 +89,8 @@ export default function usePlayLogic(match_id) {
     }
   }, [match?.state]);
 
+
+  // Carrega tudo ao abrir a partida
   useEffect(() => {
     async function load() {
       try {
@@ -99,13 +103,13 @@ export default function usePlayLogic(match_id) {
 
         setShipDefs(Array.isArray(defs) ? defs : []);
         setMatch(matchData);
+        setOwnedCards(cardsData?.cards || []);
 
         const me = matchData?.player?.find(p => p.user_id === meId);
         if (me?.player_ship?.length > 0) {
           shipsRef.current?.setFleetFromBackend(me.player_ship);
         }
 
-        setOwnedCards(cardsData?.cards || []);
       } catch (err) {
         console.error("Erro ao carregar partida:", err);
       } finally {
@@ -116,6 +120,8 @@ export default function usePlayLogic(match_id) {
     load();
   }, [getMatch, getShipDefinitions, match_id, meId]);
 
+
+  // Polling 2s
   useEffect(() => {
     const interval = setInterval(async () => {
       try {
@@ -135,6 +141,30 @@ export default function usePlayLogic(match_id) {
 
     return () => clearInterval(interval);
   }, [match, match_id, getMatch, meId]);
+
+
+  // CORREÇÃO: Sincroniza ao entrar no BattlePhase
+  useEffect(() => {
+    async function syncFleetOnActive() {
+      if (match?.state !== "ACTIVE") return;
+
+      try {
+        const updated = await getMatch(match_id);
+        setMatch(updated);
+
+        const me = updated?.player?.find(p => p.user_id === meId);
+        if (me?.player_ship?.length > 0) {
+          shipsRef.current?.setFleetFromBackend(me.player_ship);
+        }
+
+      } catch (err) {
+        console.error("Erro ao sincronizar frotas ao entrar no BattlePhase:", err);
+      }
+    }
+
+    syncFleetOnActive();
+  }, [match?.state, match_id, getMatch, meId]);
+
 
   const handleDeckSave = useCallback(() => {
     setUserAtt?.(p => !p);
@@ -166,7 +196,7 @@ export default function usePlayLogic(match_id) {
   };
 
   const handleCellClick = async (x, y) => {
-  if (!match?.state || match.state !== "ACTIVE") return;
+    if (!match?.state || match.state !== "ACTIVE") return;
     if (!isMyTurn()) return;
 
     try {
@@ -175,7 +205,7 @@ export default function usePlayLogic(match_id) {
       if (activeCard) {
         const updated = await playCard(match_id, activeCard.card_id, x, y);
         setMatch(updated);
-        setActiveCard(null); // reseta carta após o uso
+        setActiveCard(null);
         return;
       }
 
@@ -232,6 +262,5 @@ export default function usePlayLogic(match_id) {
 
     activeCard,
     setActiveCard
-
   };
 }

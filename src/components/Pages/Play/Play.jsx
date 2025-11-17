@@ -106,6 +106,7 @@ export default function Play() {
       ownedCards={ownedCards}
       pickCards={pickCards}
       matchId={match_id}
+      mePlayer={mePlayer}
     />
   );
 }

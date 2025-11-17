@@ -1,12 +1,18 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import styles from "./CardPickingPhase.module.css";
 
 export default function CardPickingPhase({
   ownedCards,
   pickCards,
   matchId,
+  mePlayer
 }) {
   const [selected, setSelected] = useState([]);
+
+  const alreadyPicked = useMemo(() => {
+    const deck = mePlayer()?.deck || [];
+    return deck.filter(c => !c.is_used).length >= 3;
+  }, [mePlayer]);
 
   function getCardImage(link) {
     if (!link) return "/placeholder.png";
@@ -14,24 +20,17 @@ export default function CardPickingPhase({
   }
 
   function toggleCard(cardId) {
-    if (selected.includes(cardId)) {
-      setSelected(prev => prev.filter(id => id !== cardId));
-      return;
-    }
+    if (alreadyPicked) return;
 
-    if (selected.length >= 3) {
-      alert("Você só pode selecionar 3 cartas!");
-      return;
-    }
-
-    setSelected(prev => [...prev, cardId]);
+    setSelected(prev => {
+      if (prev.includes(cardId)) return prev.filter(id => id !== cardId);
+      if (prev.length >= 3) return prev;
+      return [...prev, cardId];
+    });
   }
 
   async function confirmSelection() {
-    if (selected.length === 0) {
-      alert("Selecione pelo menos 1 carta.");
-      return;
-    }
+    if (selected.length === 0) return;
 
     try {
       await pickCards(matchId, selected);
@@ -39,6 +38,14 @@ export default function CardPickingPhase({
       console.error(err);
       alert("Erro ao selecionar as cartas.");
     }
+  }
+
+  if (alreadyPicked) {
+    return (
+      <div className={styles.container}>
+        <h2>Aguardando oponente selecionar as cartas...</h2>
+      </div>
+    );
   }
 
   return (
