@@ -30,8 +30,18 @@ export default function Store() {
     EFFECT: "Efeitos",
     BACKGROUND: "Backgrounds",
     SKIN: "Skins",
-    CARD: "Cartas"
+    CARD: "Cartas",
   };
+
+  // Subtipos de skins por tipo de navio
+  const skinTypes = {
+    DESTROYER: "Destroyer",
+    BATTLESHIP: "Encouraçado",
+    AIRCRAFT: "Porta-Aviões",
+    SUBMARINE: "Submarino",
+  };
+
+  const [selectedSkinType, setSelectedSkinType] = useState("DESTROYER");
 
   function resolveUrl(link) {
     if (!link) return "/placeholder.png";
@@ -52,18 +62,22 @@ export default function Store() {
         setCosmetics(storeRes.cosmetics || []);
         setOwned(new Set(userCosRes.cosmetics?.map(c => c.cosmetic_id) || []));
         setCoins(meRes.coins ?? 0);
+        setOwnedCards(new Set(userCards.map(c => c.card_id)));
       } catch (err) {
         console.error("[STORE] Erro ao carregar:", err);
         alert("Erro ao carregar a loja. Tente novamente.");
       } finally {
         setLoading(false);
-        setOwnedCards(new Set(userCards.map(c => c.card_id)));
       }
     }
     load();
   }, [userCards]);
 
   const filteredCosmetics = cosmetics.filter(c => c.type === tab);
+
+  // Skins: filtramos tudo que é tipo de navio
+  const allSkins = cosmetics.filter(c => Object.keys(skinTypes).includes(c.type));
+  const skinsBySelectedType = allSkins.filter(c => c.type === selectedSkinType);
 
   const handleBuyCosmetic = async (c) => {
     if (processing || owned.has(c.cosmetic_id)) return;
@@ -112,10 +126,25 @@ export default function Store() {
     { id: 3, amount: 3000, price: "R$ 19,90" }
   ];
 
-  const scrollByAmount = (delta) => {
-    if (carouselRef.current) {
-      carouselRef.current.scrollBy({ left: delta, behavior: "smooth" });
+  const handleBuyCoins = async (amount) => {
+    if (processing) return;
+
+    try {
+      setProcessing(true);
+      const res = await addCoins(amount);
+      setCoins(res.coins);
+      alert(`Você recebeu ${amount} Fatec Coins.`);
+    } catch (err) {
+      console.error("Erro ao comprar moedas:", err);
+      alert("Erro ao comprar moedas.");
+    } finally {
+      setProcessing(false);
     }
+  };
+
+  const scrollByAmount = (delta) => {
+    if (!carouselRef.current) return;
+    carouselRef.current.scrollBy({ left: delta, behavior: "smooth" });
   };
 
   if (loading || loadingCards) {
@@ -127,13 +156,16 @@ export default function Store() {
   }
 
   const isCardsTab = tab === "CARD";
+  const isSkinTab = tab === "SKIN";
 
   return (
     <div className={styles.container}>
+      {/* Saldo */}
       <div className={styles.FC_Container}>
         ⚓ Fatec Coins: <span style={{ color: "var(--tertiary-color)" }}>{coins}</span>
       </div>
 
+      {/* Comprar Moedas */}
       <div className={styles.CoinPacks}>
         <div className={styles.PackList}>
           {coinPacks.map(p => (
@@ -141,16 +173,17 @@ export default function Store() {
               <h3>{p.amount} FC</h3>
               <p>{p.price}</p>
               <button
-                onClick={() => addCoins(p.amount).then(r => setCoins(r.coins))}
+                onClick={() => handleBuyCoins(p.amount)}
                 disabled={processing}
               >
-                Comprar
+                {processing ? "⋯" : "Comprar"}
               </button>
             </div>
           ))}
         </div>
       </div>
 
+      {/* Tabs principais */}
       <div className={styles.Nav_Buttons_Container}>
         <ul>
           {Object.entries(tabsMap).map(([key, label]) => (
@@ -165,6 +198,22 @@ export default function Store() {
         </ul>
       </div>
 
+      {/* Subtabs de Skin por tipo de navio */}
+      {isSkinTab && (
+        <div className={styles.SkinTabs}>
+          {Object.entries(skinTypes).map(([key, label]) => (
+            <span
+              key={key}
+              className={`${styles.SkinTab} ${selectedSkinType === key ? styles.activeSkinTab : ""}`}
+              onClick={() => !processing && setSelectedSkinType(key)}
+            >
+              {label}
+            </span>
+          ))}
+        </div>
+      )}
+
+      {/* Carrossel */}
       <div className={styles.Carousel_Container}>
         <button
           className={`${styles.Carousel_Button} ${styles.prev}`}
@@ -175,7 +224,7 @@ export default function Store() {
         </button>
 
         <div ref={carouselRef} className={styles.Carousel_Wrapper}>
-          {/* Cards Tab */}
+          {/* Aba de Cartas */}
           {isCardsTab &&
             userCards.map(card => {
               const isOwned = ownedCards.has(card.card_id);
@@ -196,8 +245,29 @@ export default function Store() {
             })
           }
 
-          {/* Cosmetics Tabs */}
-          {!isCardsTab &&
+          {/* Aba de Skins (por tipo) */}
+          {isSkinTab &&
+            skinsBySelectedType.map(c => {
+              const isOwned = owned.has(c.cosmetic_id);
+              return (
+                <div
+                  key={c.cosmetic_id}
+                  className={`${styles.Card_Wrapper} ${isOwned ? styles.ownedCard : ""}`}
+                >
+                  {isOwned && <div className={styles.ownedTag}>Adquirido</div>}
+                  <Card
+                    titulo={c.description}
+                    preco={c.price}
+                    imagem={resolveUrl(c.link)}
+                    onComprar={() => handleBuyCosmetic(c)}
+                  />
+                </div>
+              );
+            })
+          }
+
+          {/* Outros cosméticos (ícones, efeitos, backgrounds) */}
+          {!isCardsTab && !isSkinTab &&
             filteredCosmetics.map(c => {
               const isOwned = owned.has(c.cosmetic_id);
               return (
