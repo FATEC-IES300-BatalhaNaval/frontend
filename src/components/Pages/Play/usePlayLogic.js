@@ -120,33 +120,48 @@ export default function usePlayLogic(match_id) {
   }, [getMatch, getShipDefinitions, match_id, meId]);
 
   // Polling inteligente: somente quando não for meu turno ou em fases iniciais
-useEffect(() => {
-  if (!match) return;
+  useEffect(() => {
+    if (!match) return;
 
-  const shouldPoll =
-    match.state !== "ACTIVE" || !isMyTurn();
+    const shouldPoll =
+      match.state !== "ACTIVE" || !isMyTurn();
 
-  if (!shouldPoll) return;
+    if (!shouldPoll) return;
 
-  const interval = setInterval(async () => {
-    try {
-      const updated = await getMatch(match_id);
+    const interval = setInterval(async () => {
+      try {
+        const updated = await getMatch(match_id);
 
-      if (!updated) return;
+        if (!updated) return;
 
-      setMatch(updated);
+        setMatch(updated);
 
-      const me = updated.player?.find(p => p.user_id === meId);
-      if (me?.player_ship?.length > 0) {
-        shipsRef.current?.setFleetFromBackend(me.player_ship);
+        const me = updated.player?.find(p => p.user_id === meId);
+        if (me?.player_ship?.length > 0) {
+          shipsRef.current?.setFleetFromBackend(me.player_ship);
+        }
+      } catch (err) {
+        console.error("Polling error:", err);
       }
-    } catch (err) {
-      console.error("Polling error:", err);
-    }
-  }, 3000);
+    }, 3000);
 
-  return () => clearInterval(interval);
-}, [match, match_id, getMatch, meId, isMyTurn]);
+    return () => clearInterval(interval);
+  }, [match, match_id, getMatch, meId, isMyTurn]);
+
+  // Aqui ↓ (após o polling)
+  useEffect(() => {
+    if (!match || match.state !== "ACTIVE") return;
+
+    const me = mePlayer();
+    if (me?.player_ship?.length > 0) {
+      shipsRef.current?.setFleetFromBackend(me.player_ship);
+    }
+
+    const enemy = enemyPlayer();
+    if (enemy?.player_ship?.length > 0) {
+      enemyShipsRef.current?.setFleetFromBackend(enemy.player_ship);
+    }
+  }, [match, mePlayer, enemyPlayer]);
 
 
   const handleDeckSave = useCallback(() => {
