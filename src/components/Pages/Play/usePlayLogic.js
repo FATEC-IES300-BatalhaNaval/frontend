@@ -45,6 +45,22 @@ export default function usePlayLogic(match_id) {
   const enemyHasPlaced = () => (enemyPlayer()?.player_ship?.length || 0) > 0;
   const isMyTurn = () => match?.current_user_id === meId;
 
+  // Atualiza o estado após uma ação
+  const refreshMatch = useCallback(async () => {
+    try {
+      const updated = await getMatch(match_id);
+      setMatch(updated);
+
+      const me = updated?.player?.find(p => p.user_id === meId);
+      if (me?.player_ship?.length > 0) {
+        shipsRef.current?.setFleetFromBackend(me.player_ship);
+      }
+    } catch (err) {
+      console.error("Erro ao atualizar estado da partida:", err);
+    }
+  }, [getMatch, match_id, meId]);
+
+
   const [ownedCards, setOwnedCards] = useState([]);
 
   const shots = useMemo(() => {
@@ -70,34 +86,32 @@ export default function usePlayLogic(match_id) {
     };
   }, []);
 
-  // Carta automática: executa assim que for ativada
-useEffect(() => {
-  if (!activeCard) return;
-  if (!isMyTurn()) return;
+  // Carta automática
+  useEffect(() => {
+    if (!activeCard || !isMyTurn()) return;
 
-  const isRandomDamage =
-    activeCard.card_id === "f8403282-db85-4f57-ab64-df2319ee584f" ||
-    activeCard.card_name?.toLowerCase() === "dano_aleatorio";
+    const autoIds = ["f8403282-db85-4f57-ab64-df2319ee584f"];
+    const isRandomDamage =
+      autoIds.includes(activeCard.card_id) ||
+      activeCard.card_name?.toLowerCase() === "dano_aleatorio";
 
-  if (!isRandomDamage) return;
+    if (!isRandomDamage) return;
 
-  const autoPlay = async () => {
-    try {
-      setSubmitting(true);
-      const updated = await playCard(match_id, activeCard.card_id, 0, 0);
-      setMatch(updated);
-      setActiveCard(null);
-    } catch (err) {
-      console.error("Erro ao jogar carta automática:", err);
-    } finally {
-      setSubmitting(false);
-    }
-  };
+    const autoPlay = async () => {
+      try {
+        setSubmitting(true);
+        await playCard(match_id, activeCard.card_id, 0, 0);
+        setActiveCard(null);
+        await refreshMatch();
+      } catch (err) {
+        console.error("Erro ao jogar carta automática:", err);
+      }
 
-  // dispara automaticamente
-  autoPlay();
-}, [activeCard, isMyTurn, match_id, playCard, setSubmitting, setMatch]);
+      setTimeout(() => setSubmitting(false), 2000);
+    };
 
+    autoPlay();
+  }, [activeCard, isMyTurn, match_id, playCard, refreshMatch]);
 
   useEffect(() => {
     if (!match) return;
@@ -227,25 +241,24 @@ useEffect(() => {
   const handleCellClick = async (x, y) => {
     if (!match?.state || match.state !== "ACTIVE") return;
     if (!isMyTurn()) return;
+    if (submitting) return; // TRAVA contra Spam
+
+    setSubmitting(true);
 
     try {
-      setSubmitting(true);
-
       if (activeCard) {
-        const updated = await playCard(match_id, activeCard.card_id, x, y);
-        setMatch(updated);
+        await playCard(match_id, activeCard.card_id, x, y);
         setActiveCard(null);
-        return;
+      } else {
+        await shoot(match_id, x, y);
       }
 
-      const updated = await shoot(match_id, x, y);
-      setMatch(updated);
-
+      await refreshMatch(); // SEMPRE atualiza
     } catch (err) {
       console.error("Erro ao atirar/jogar carta:", err);
-    } finally {
-      setSubmitting(false);
     }
+
+    setTimeout(() => setSubmitting(false), 2000); // TRAVAMENTO 2s
   };
 
   const stateUI = {
