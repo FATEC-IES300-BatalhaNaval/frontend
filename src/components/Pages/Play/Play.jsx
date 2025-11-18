@@ -21,6 +21,7 @@ export default function Play() {
     match,
     shipDefs,
     getMatch,
+    setMatch,
     
     // refs
     boardRef,
@@ -133,6 +134,7 @@ export default function Play() {
         activeCard={activeCard}
         setActiveCard={setActiveCard}
         submitting={submitting}
+        setMatch={setMatch}
       />
     );
   }

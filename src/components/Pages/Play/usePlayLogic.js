@@ -25,7 +25,6 @@ export default function usePlayLogic(match_id) {
   const enemyShipsRef = useRef(null);
 
   const [activeCard, setActiveCard] = useState(null);
-  const isPlayingCardRef = useRef(false);
 
   const introRef = useRef(null);
   const battleRef = useRef(null);
@@ -45,22 +44,6 @@ export default function usePlayLogic(match_id) {
   const playerHasPlaced = () => (mePlayer()?.player_ship?.length || 0) > 0;
   const enemyHasPlaced = () => (enemyPlayer()?.player_ship?.length || 0) > 0;
   const isMyTurn = () => match?.current_user_id === meId;
-
-  // Atualiza o estado após uma ação
-  const refreshMatch = useCallback(async () => {
-    try {
-      const updated = await getMatch(match_id);
-      setMatch(updated);
-
-      const me = updated?.player?.find(p => p.user_id === meId);
-      if (me?.player_ship?.length > 0) {
-        shipsRef.current?.setFleetFromBackend(me.player_ship);
-      }
-    } catch (err) {
-      console.error("Erro ao atualizar estado da partida:", err);
-    }
-  }, [getMatch, match_id, meId]);
-
 
   const [ownedCards, setOwnedCards] = useState([]);
 
@@ -87,47 +70,6 @@ export default function usePlayLogic(match_id) {
     };
   }, []);
 
-  // Carta automática: executa assim que for ativada
-  useEffect(() => {
-    if (!activeCard || !isMyTurn()) return;
-
-    const autoIds = ["f8403282-db85-4f57-ab64-df2319ee584f"];
-    const isRandomDamage =
-      autoIds.includes(activeCard.card_id) ||
-      activeCard.card_name?.toLowerCase() === "dano_aleatorio";
-
-    if (!isRandomDamage) return;
-
-    // Já está em execução? então ignora
-    if (isPlayingCardRef.current) return;
-    isPlayingCardRef.current = true;
-
-    const autoPlay = async () => {
-      try {
-        setSubmitting(true);
-
-        await playCard(match_id, activeCard.card_id, 0, 0);
-        setActiveCard(null);
-
-        await refreshMatch();
-
-        // Cooldown do board após o uso da carta
-        setTimeout(() => {
-          setSubmitting(false);
-          // NÃO liberar o ref aqui, pois carta foi usada e removida
-        }, 2000);
-
-      } catch (err) {
-        console.error("Erro ao jogar carta automática:", err);
-        isPlayingCardRef.current = false; // libera apenas em caso de falha
-        setSubmitting(false);
-      }
-    };
-
-    autoPlay();
-  }, [activeCard, isMyTurn, match_id, playCard, refreshMatch]);
-
-
   useEffect(() => {
     if (!match) return;
 
@@ -146,7 +88,6 @@ export default function usePlayLogic(match_id) {
       battleRef.current.pause();
     }
   }, [match?.state]);
-
 
   // Carrega tudo ao abrir a partida
   useEffect(() => {
@@ -178,50 +119,34 @@ export default function usePlayLogic(match_id) {
     load();
   }, [getMatch, getShipDefinitions, match_id, meId]);
 
+  // Polling inteligente: somente quando não for meu turno ou em fases iniciais
+useEffect(() => {
+  if (!match) return;
 
-  // Polling 2s
-  useEffect(() => {
-    const interval = setInterval(async () => {
-      try {
-        const updated = await getMatch(match_id);
-        if (JSON.stringify(updated) !== JSON.stringify(match)) {
-          setMatch(updated);
+  const shouldPoll =
+    match.state !== "ACTIVE" || !isMyTurn();
 
-          const me = updated?.player?.find(p => p.user_id === meId);
-          if (me?.player_ship?.length > 0) {
-            shipsRef.current?.setFleetFromBackend(me.player_ship);
-          }
-        }
-      } catch (err) {
-        console.error("Polling erro:", err);
+  if (!shouldPoll) return;
+
+  const interval = setInterval(async () => {
+    try {
+      const updated = await getMatch(match_id);
+
+      if (!updated) return;
+
+      setMatch(updated);
+
+      const me = updated.player?.find(p => p.user_id === meId);
+      if (me?.player_ship?.length > 0) {
+        shipsRef.current?.setFleetFromBackend(me.player_ship);
       }
-    }, 2000);
-
-    return () => clearInterval(interval);
-  }, [match, match_id, getMatch, meId]);
-
-
-  // CORREÇÃO: Sincroniza ao entrar no BattlePhase
-  useEffect(() => {
-    async function syncFleetOnActive() {
-      if (match?.state !== "ACTIVE") return;
-
-      try {
-        const updated = await getMatch(match_id);
-        setMatch(updated);
-
-        const me = updated?.player?.find(p => p.user_id === meId);
-        if (me?.player_ship?.length > 0) {
-          shipsRef.current?.setFleetFromBackend(me.player_ship);
-        }
-
-      } catch (err) {
-        console.error("Erro ao sincronizar frotas ao entrar no BattlePhase:", err);
-      }
+    } catch (err) {
+      console.error("Polling error:", err);
     }
+  }, 3000);
 
-    syncFleetOnActive();
-  }, [match?.state, match_id, getMatch, meId]);
+  return () => clearInterval(interval);
+}, [match, match_id, getMatch, meId, isMyTurn]);
 
 
   const handleDeckSave = useCallback(() => {
@@ -256,26 +181,35 @@ export default function usePlayLogic(match_id) {
   const handleCellClick = async (x, y) => {
     if (!match?.state || match.state !== "ACTIVE") return;
     if (!isMyTurn()) return;
-    if (submitting) return; // TRAVA contra Spam
+    if (submitting) return;
 
     setSubmitting(true);
 
     try {
+      let updated;
+
       if (activeCard) {
-        await playCard(match_id, activeCard.card_id, x, y);
+        updated = await playCard(match_id, activeCard.card_id, x, y);
         setActiveCard(null);
       } else {
-        await shoot(match_id, x, y);
+        updated = await shoot(match_id, x, y);
       }
 
-      await refreshMatch(); // SEMPRE atualiza
+      if (updated) {
+        setMatch(updated);
+
+        const me = updated.player?.find(p => p.user_id === meId);
+        if (me?.player_ship?.length > 0) {
+          shipsRef.current?.setFleetFromBackend(me.player_ship);
+        }
+      }
     } catch (err) {
       console.error("Erro ao atirar/jogar carta:", err);
+    } finally {
+      setSubmitting(false);
     }
-
-    setTimeout(() => setSubmitting(false), 500); // TRAVAMENTO 1s
   };
-  
+
   const stateUI = {
     isLobby: match?.state === "LOBBY",
     isPlacement: match?.state === "SHIP_PLACEMENT",
@@ -289,7 +223,8 @@ export default function usePlayLogic(match_id) {
     submitting,
     match,
     shipDefs,
-
+    setMatch,
+        
     boardRef,
     shipsRef,
     enemyBoardRef,

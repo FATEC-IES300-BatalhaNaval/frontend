@@ -1,12 +1,9 @@
 import Board from "../../../Board/Board";
 import Ships from "../../../Ships/Ships";
 import Placar from "../../../Placar/Placar";
-import EmojiBox from "../../../EmojiBox/EmojiBox";
-import EmojiAnimation from "../../../EmojiBox/EmojiAnimation";
 import TurnIndicator from "../../../TurnIndicator/TurnIndicator";
 import Timer from "../../../Timer/Timer";
 import Deck from "../../../Deck/Deck";
-import CoordinateInput from "../CoordinateInput";
 import styles from "../Play.module.css";
 import { useCallback } from "react";
 
@@ -26,14 +23,19 @@ export default function BattlePhase({
   activeCard,
   setActiveCard,
   submitting,
+  setMatch
 }) {
   const itIsMyTurn = isMyTurn();
 
   const handleTimeEnd = useCallback(async () => {
     try {
-      await skipTurn(matchId);
-      await new Promise(r => setTimeout(r, 200));
-      await getMatch(matchId);
+      const updated = await skipTurn(matchId);
+      if (updated) {
+        setMatch(updated);
+      } else {
+        const refreshed = await getMatch(matchId);
+        setMatch(refreshed);
+      }
     } catch (err) {
       console.error("Erro ao pular turno:", err);
     }
