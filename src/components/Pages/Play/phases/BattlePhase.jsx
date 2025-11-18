@@ -20,8 +20,6 @@ export default function BattlePhase({
   enemyShipsRef,
   handleCellClick,
   isMyTurn,
-  activeEmoji,
-  setActiveEmoji,
   matchId,
   skipTurn,
   getMatch,
@@ -108,12 +106,15 @@ export default function BattlePhase({
           disabled={!itIsMyTurn}
         />
 
-        <EmojiAnimation
+        {/*
+          <EmojiAnimation
           emoji={activeEmoji}
           onAnimationEnd={() => setActiveEmoji(null)}
         />
 
         <EmojiBox onEmojiSelect={setActiveEmoji} />
+
+      */}
 
         <Deck
           cards={mePlayer()?.deck || []}
