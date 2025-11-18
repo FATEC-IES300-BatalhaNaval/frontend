@@ -70,6 +70,35 @@ export default function usePlayLogic(match_id) {
     };
   }, []);
 
+  // Carta automática: executa assim que for ativada
+useEffect(() => {
+  if (!activeCard) return;
+  if (!isMyTurn()) return;
+
+  const isRandomDamage =
+    activeCard.card_id === "f8403282-db85-4f57-ab64-df2319ee584f" ||
+    activeCard.card_name?.toLowerCase() === "dano_aleatorio";
+
+  if (!isRandomDamage) return;
+
+  const autoPlay = async () => {
+    try {
+      setSubmitting(true);
+      const updated = await playCard(match_id, activeCard.card_id, 0, 0);
+      setMatch(updated);
+      setActiveCard(null);
+    } catch (err) {
+      console.error("Erro ao jogar carta automática:", err);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // dispara automaticamente
+  autoPlay();
+}, [activeCard, isMyTurn, match_id, playCard, setSubmitting, setMatch]);
+
+
   useEffect(() => {
     if (!match) return;
 
