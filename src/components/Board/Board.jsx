@@ -1,7 +1,7 @@
 import React, { forwardRef } from 'react';
 import styles from './Board.module.css';
 
-const Board = forwardRef(({ grid = [], onCellClick, children }, ref) => {
+const Board = forwardRef(({ grid = [], onCellClick, children, enableHover = false }, ref) => {
 
     const rows = ['', '1','2','3','4','5','6','7','8','9','10'];
     const cols = ['', 'A','B','C','D','E','F','G','H','I','J'];
@@ -17,7 +17,7 @@ const Board = forwardRef(({ grid = [], onCellClick, children }, ref) => {
     };
 
     return (
-        <div className={styles.board}>
+        <div className={`${styles.board} ${enableHover ? styles.enableHover : ''}`}>
             <div className={styles["board-background"]}>
                 <div className={styles["board-table"]} ref={ref}>
                     

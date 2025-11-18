@@ -59,6 +59,16 @@
     user-select: none; /* Impede a seleção do texto dentro da célula */
 }
 
+.activeBoard .cell:hover {
+  background-color: rgba(255, 255, 255, 0.4);
+  cursor: pointer;
+}
+
+.disabledBoard .cell:hover {
+  background-color: transparent;
+  cursor: default;
+}
+
 .shipPart {
     position: absolute;
     width: 100%;
@@ -74,7 +84,7 @@
 }
 
 .miss {
-    background-color: rgba(0, 128, 255, 0.45);
+    background-color: rgba(61, 65, 70, 0.55);
 }
 
 .label {
@@ -127,4 +137,9 @@
 
 .right-bottom {
     border-bottom-right-radius: 10px;
+}
+
+.enableHover .cell:hover {
+    background-color: rgba(255, 255, 255, 0.4);
+    cursor: pointer;
 }

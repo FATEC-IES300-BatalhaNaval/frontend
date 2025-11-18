@@ -69,7 +69,7 @@ export default function BattlePhase({
 
         <div className={styles.boardsContainer}>
           <div className={styles.boardWrapper}>
-            <Board ref={boardRef} grid={mePlayer()?.grid_cell || []}>
+            <Board ref={boardRef} grid={mePlayer()?.grid_cell || []} enableHover={false}>
               <Ships
                 ref={shipsRef}
                 boardRef={boardRef}
@@ -90,6 +90,7 @@ export default function BattlePhase({
               <Board
                 ref={enemyBoardRef}
                 onCellClick={handleCellClick}
+                enableHover={itIsMyTurn && !submitting}
                 grid={enemyPlayer()?.grid_cell || []}
               >
                 <Ships

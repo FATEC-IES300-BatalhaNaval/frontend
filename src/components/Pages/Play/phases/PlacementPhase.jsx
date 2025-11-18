@@ -27,7 +27,7 @@ export default function PlacementPhase({
       </div>
 
       <div className={styles.boardSection}>
-        <Board ref={boardRef}>
+        <Board ref={boardRef} enableHover={false}>
           <Ships
             ref={shipsRef}
             boardRef={boardRef}
