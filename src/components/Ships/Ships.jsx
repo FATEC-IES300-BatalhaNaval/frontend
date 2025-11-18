@@ -108,11 +108,8 @@ const Ships = forwardRef(
       );
     }, [config, resolveShipImage]);
 
-    const [draggingShip, setDraggingShip] = useState(null);
     const [selectedShipId, setSelectedShipId] = useState(null);
-    const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
-    const [originalPosition, setOriginalPosition] = useState({ top: 0, left: 0 });
-
+    
     const isOverlapping = (a, b) => {
       const aRight = a.gridX + (a.rotation === 0 ? a.size : 1);
       const aBottom = a.gridY + (a.rotation === 0 ? 1 : a.size);
@@ -140,87 +137,15 @@ const Ships = forwardRef(
       });
     }, []);
 
-    const handleMouseDown = (e, shipId) => {
+    const handleShipClick = (e, shipId) => {
       if (isLocked || e.button !== 0) return;
 
       const ship = ships.find(s => s.id === shipId);
       if (!ship) return;
 
       setSelectedShipId(shipId);
-      setDraggingShip(shipId);
-
-      const rect = e.target.getBoundingClientRect();
-      setDragOffset({
-        x: e.clientX - rect.left,
-        y: e.clientY - rect.top,
-      });
-
-      setOriginalPosition({ top: ship.top, left: ship.left });
       e.preventDefault();
-    };
-
-    const handleMouseMove = useCallback((e) => {
-      if (!draggingShip || isLocked) return;
-
-      const board = boardRef.current;
-      if (!board) return;
-
-      const rect = board.getBoundingClientRect();
-      setShips(prev =>
-        prev.map(s =>
-          s.id === draggingShip
-            ? {
-                ...s,
-                isDragging: true,
-                top: e.clientY - rect.top - dragOffset.y,
-                left: e.clientX - rect.left - dragOffset.x,
-              }
-            : s
-        )
-      );
-    }, [draggingShip, dragOffset, isLocked, boardRef]);
-
-    const handleMouseUp = useCallback((e) => {
-      if (!draggingShip || isLocked) return;
-
-      setShips(prev =>
-        prev.map(s => {
-          if (s.id !== draggingShip) return s;
-
-          const board = boardRef.current;
-          if (!board) return { ...s, isDragging: false };
-
-          const rect = board.getBoundingClientRect();
-          const relX = e.clientX - rect.left - CELL_SIZE;
-          const relY = e.clientY - rect.top - CELL_SIZE;
-          const gx = Math.round(relX / CELL_SIZE);
-          const gy = Math.round(relY / CELL_SIZE);
-
-          const newPos = { ...s, gridX: gx, gridY: gy };
-
-          if (isPositionValid(newPos, prev)) {
-            return {
-              ...s,
-              isDragging: false,
-              isPlaced: true,
-              gridX: gx,
-              gridY: gy,
-              top: gy * CELL_SIZE + CELL_SIZE,
-              left: gx * CELL_SIZE + CELL_SIZE,
-            };
-          }
-
-          return {
-            ...s,
-            isDragging: false,
-            top: originalPosition.top,
-            left: originalPosition.left,
-          };
-        })
-      );
-
-      setDraggingShip(null);
-    }, [draggingShip, boardRef, originalPosition, isLocked, isPositionValid]);
+    };    
 
     const handleKeyDown = useCallback((e) => {
       if (isLocked || !selectedShipId) return;
@@ -315,23 +240,13 @@ const Ships = forwardRef(
     }, [placeShipsRandomly]);
 
     useEffect(() => {
-      if (draggingShip) {
-        window.addEventListener("mousemove", handleMouseMove);
-        window.addEventListener("mouseup", handleMouseUp);
-      } else {
-        window.removeEventListener("mousemove", handleMouseMove);
-        window.removeEventListener("mouseup", handleMouseUp);
-      }
-
       const keyHandler = e => handleKeyDown(e);
       window.addEventListener("keydown", keyHandler);
 
       return () => {
-        window.removeEventListener("mousemove", handleMouseMove);
-        window.removeEventListener("mouseup", handleMouseUp);
         window.removeEventListener("keydown", keyHandler);
       };
-    }, [draggingShip, handleMouseMove, handleMouseUp, handleKeyDown]);
+    }, [handleKeyDown]);
 
     useImperativeHandle(ref, () => ({
       randomize: placeShipsRandomly,
@@ -373,8 +288,7 @@ const Ships = forwardRef(
             <div
               key={ship.id}
               id={ship.id}
-              className={`${styles.ship}
-                ${ship.isDragging && !isLocked ? styles.dragging : ""}
+              className={`${styles.ship}                
                 ${ship.isSunk ? styles.sunk : ""}
                 ${ship.id === selectedShipId && !isLocked ? styles.selected : ""}
                 ${isLocked ? styles.locked : ""}`}
@@ -384,7 +298,7 @@ const Ships = forwardRef(
                 "--ship-size": ship.size,
                 transform: `rotate(${ship.rotation}deg)`,
               }}
-              onMouseDown={e => handleMouseDown(e, ship.id)}
+              onClick={e => handleShipClick(e, ship.id)}
             >
               {ship.img && (
                 <img src={ship.img} alt="ship" className={styles.shipImage} />
