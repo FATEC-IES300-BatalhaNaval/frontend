@@ -1,5 +1,4 @@
 import { useMemo, useEffect } from "react";
-import confetti from "canvas-confetti";
 import styles from "../Play.module.css";
 
 export default function FinishedPhase({ match, mePlayer }) {
