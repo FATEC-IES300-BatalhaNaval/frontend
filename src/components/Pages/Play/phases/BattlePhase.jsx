@@ -24,7 +24,8 @@ export default function BattlePhase({
   skipTurn,
   getMatch,
   activeCard,
-  setActiveCard
+  setActiveCard,
+  submitting,
 }) {
   const itIsMyTurn = isMyTurn();
 
@@ -79,8 +80,8 @@ export default function BattlePhase({
           <div className={styles.boardWrapper}>
             <div
               style={{
-                pointerEvents: itIsMyTurn ? "auto" : "none",
-                opacity: itIsMyTurn ? 1 : 0.45,
+                pointerEvents: itIsMyTurn && !submitting ? "auto" : "none",
+                opacity: itIsMyTurn && !submitting ? 1 : 0.45,
                 transition: "opacity .3s ease"
               }}
             >
@@ -100,21 +101,6 @@ export default function BattlePhase({
             </div>
           </div>
         </div>
-
-        <CoordinateInput
-          onShoot={handleCellClick}
-          disabled={!itIsMyTurn}
-        />
-
-        {/*
-          <EmojiAnimation
-          emoji={activeEmoji}
-          onAnimationEnd={() => setActiveEmoji(null)}
-        />
-
-        <EmojiBox onEmojiSelect={setActiveEmoji} />
-
-      */}
 
         <Deck
           cards={mePlayer()?.deck || []}

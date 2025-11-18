@@ -25,6 +25,7 @@ export default function usePlayLogic(match_id) {
   const enemyShipsRef = useRef(null);
 
   const [activeCard, setActiveCard] = useState(null);
+  const isPlayingCardRef = useRef(false);
 
   const introRef = useRef(null);
   const battleRef = useRef(null);
@@ -86,7 +87,7 @@ export default function usePlayLogic(match_id) {
     };
   }, []);
 
-  // Carta automática
+  // Carta automática: executa assim que for ativada
   useEffect(() => {
     if (!activeCard || !isMyTurn()) return;
 
@@ -97,21 +98,35 @@ export default function usePlayLogic(match_id) {
 
     if (!isRandomDamage) return;
 
+    // Já está em execução? então ignora
+    if (isPlayingCardRef.current) return;
+    isPlayingCardRef.current = true;
+
     const autoPlay = async () => {
       try {
         setSubmitting(true);
+
         await playCard(match_id, activeCard.card_id, 0, 0);
         setActiveCard(null);
+
         await refreshMatch();
+
+        // Cooldown do board após o uso da carta
+        setTimeout(() => {
+          setSubmitting(false);
+          // NÃO liberar o ref aqui, pois carta foi usada e removida
+        }, 2000);
+
       } catch (err) {
         console.error("Erro ao jogar carta automática:", err);
+        isPlayingCardRef.current = false; // libera apenas em caso de falha
+        setSubmitting(false);
       }
-
-      setTimeout(() => setSubmitting(false), 2000);
     };
 
     autoPlay();
   }, [activeCard, isMyTurn, match_id, playCard, refreshMatch]);
+
 
   useEffect(() => {
     if (!match) return;
@@ -258,9 +273,9 @@ export default function usePlayLogic(match_id) {
       console.error("Erro ao atirar/jogar carta:", err);
     }
 
-    setTimeout(() => setSubmitting(false), 2000); // TRAVAMENTO 2s
+    setTimeout(() => setSubmitting(false), 500); // TRAVAMENTO 1s
   };
-
+  
   const stateUI = {
     isLobby: match?.state === "LOBBY",
     isPlacement: match?.state === "SHIP_PLACEMENT",

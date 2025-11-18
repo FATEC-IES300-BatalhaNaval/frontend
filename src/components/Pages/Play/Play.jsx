@@ -53,7 +53,7 @@ export default function Play() {
     ownedCards,
     // cartão ativo
     activeCard,
-    setActiveCard
+    setActiveCard,
   } = usePlayLogic(match_id);
 
   if (loading) {
@@ -132,6 +132,7 @@ export default function Play() {
         getMatch={getMatch}
         activeCard={activeCard}
         setActiveCard={setActiveCard}
+        submitting={submitting}
       />
     );
   }
